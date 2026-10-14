@@ -25,10 +25,18 @@ class DoctorDashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(Icons.anchor, size: 28),
+            ClipOval(
+              child: Image.asset(
+                'assets/images/logo.jpg',
+                width: 32,
+                height: 32,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.psychology, size: 24),
+              ),
+            ),
             const SizedBox(width: 10),
             const Text(
-              'مرساة — عيادة الطب النفسي',
+              'عيادة مرساة',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 20),

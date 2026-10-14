@@ -75,8 +75,8 @@ void main() {
       );
 
       // Verify branding and login elements
-      expect(find.text('مرساة للطب النفسي'), findsOneWidget);
-      expect(find.text('تسجيل دخول الطبيب المعتمد'), findsOneWidget);
+      expect(find.text('عيادة مرساة'), findsOneWidget);
+      expect(find.text('د. مارينا نبيه نمر — أخصائي الطب النفسي وعلاج الإدمان'), findsOneWidget);
       expect(find.text('تسجيل الدخول الآمن'), findsOneWidget);
       expect(find.text('دخول بوضع التابلت غير المتصل (Offline Mode)'), findsOneWidget);
     });

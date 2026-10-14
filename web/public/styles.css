@@ -1,15 +1,19 @@
 :root {
-  --primary: #1B4F72;
-  --primary-dark: #12364F;
-  --primary-light: #2E86AB;
-  --accent: #E5A93C;
-  --bg-color: #FAFAF8;
+  --primary: #45632D;            /* Official Forest Olive Green from Logo */
+  --primary-dark: #2F451E;       /* Deep Forest Green */
+  --primary-light: #5B823D;      /* Sage / Light Olive */
+  --primary-soft: #EEF3EA;       /* Very soft olive tint */
+  --accent-gold: #B58728;        /* Official Warm Ochre Gold from Logo */
+  --accent-gold-dark: #8E6513;   /* Rich Deep Gold */
+  --accent-gold-light: #DFAC47;  /* Bright Warm Gold */
+  --accent-gold-soft: #FBF6EB;   /* Pale Gold Wash */
+  --bg-color: #F8FAF6;           /* Calming natural warm off-white */
   --card-bg: #FFFFFF;
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --border-color: #E2E8F0;
+  --text-main: #1D2619;          /* Deep dark slate-olive */
+  --text-muted: #5E6957;         /* Balanced natural muted */
+  --border-color: #DFE5DA;       /* Soft olive-grey border */
   --radius: 16px;
-  --shadow: 0 10px 25px -5px rgba(27, 79, 114, 0.08), 0 8px 10px -6px rgba(27, 79, 114, 0.04);
+  --shadow: 0 10px 25px -5px rgba(69, 99, 45, 0.08), 0 8px 10px -6px rgba(69, 99, 45, 0.04);
 }
 
 * {
@@ -40,13 +44,13 @@ header {
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  box-shadow: 0 2px 10px rgba(69, 99, 45, 0.06);
 }
 
 .header-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 12px 16px;
+  padding: 10px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -57,18 +61,37 @@ header {
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-decoration: none;
   color: var(--primary);
 }
 
-.brand svg {
+.brand-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-gold);
+  box-shadow: 0 2px 6px rgba(69, 99, 45, 0.15);
   flex-shrink: 0;
 }
 
+.brand-info {
+  display: flex;
+  flex-direction: column;
+}
+
 .brand-title {
-  font-size: clamp(1.15rem, 3vw, 1.45rem);
+  font-size: clamp(1.15rem, 3vw, 1.4rem);
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1.2;
+}
+
+.brand-subtitle {
+  font-size: 0.78rem;
   font-weight: 700;
+  color: var(--accent-gold-dark);
 }
 
 .nav-links {
@@ -130,14 +153,23 @@ header {
 }
 
 .btn-outline:hover {
-  background: rgba(27, 79, 114, 0.05);
+  background: var(--primary-soft);
+}
+
+.btn-gold {
+  background: var(--accent-gold);
+  color: white;
+}
+
+.btn-gold:hover {
+  background: var(--accent-gold-dark);
 }
 
 /* Mobile Nav Toggle */
 .mobile-nav-bar {
   display: none;
   width: 100%;
-  background: #F8FAFC;
+  background: var(--bg-color);
   border-top: 1px solid var(--border-color);
   padding: 8px 16px;
   overflow-x: auto;
@@ -155,14 +187,14 @@ header {
 }
 
 .mobile-nav-bar a:hover {
-  background: rgba(27, 79, 114, 0.08);
+  background: var(--primary-soft);
   color: var(--primary);
 }
 
 /* Hero Section */
 .hero {
   padding: clamp(40px, 8vw, 80px) 16px clamp(30px, 6vw, 60px);
-  background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%);
+  background: linear-gradient(180deg, #FFFFFF 0%, #EFF5EC 100%);
   text-align: center;
 }
 
@@ -173,12 +205,13 @@ header {
 
 .hero-badge {
   display: inline-block;
-  background: rgba(46, 134, 171, 0.1);
-  color: var(--primary-light);
-  padding: 5px 14px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  border: 1px solid #D5E2CE;
+  padding: 6px 16px;
   border-radius: 20px;
-  font-weight: 600;
-  font-size: 0.82rem;
+  font-weight: 700;
+  font-size: 0.84rem;
   margin-bottom: 16px;
 }
 
@@ -248,13 +281,13 @@ section {
 
 .card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 15px 30px -5px rgba(27, 79, 114, 0.12);
+  box-shadow: 0 15px 30px -5px rgba(69, 99, 45, 0.12);
 }
 
 .card-icon {
   width: 50px;
   height: 50px;
-  background: rgba(27, 79, 114, 0.08);
+  background: var(--primary-soft);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -262,6 +295,7 @@ section {
   color: var(--primary);
   margin-bottom: 16px;
   font-size: 1.5rem;
+  border: 1px solid #DCE6D7;
 }
 
 .card h3 {
@@ -290,17 +324,22 @@ section {
 }
 
 .doctor-avatar {
-  width: clamp(120px, 25vw, 200px);
-  height: clamp(120px, 25vw, 200px);
+  width: clamp(120px, 25vw, 170px);
+  height: clamp(120px, 25vw, 170px);
   border-radius: 50%;
-  background: var(--primary-light);
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: clamp(3rem, 7vw, 4rem);
   flex-shrink: 0;
-  border: 5px solid #E2E8F0;
+  border: 4px solid var(--accent-gold);
+  box-shadow: 0 10px 25px rgba(69, 99, 45, 0.2);
+}
+
+.doctor-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* Screening Tests */
@@ -526,7 +565,7 @@ section {
 }
 
 .cal-day-cell:hover:not(.disabled) {
-  background: rgba(27, 79, 114, 0.1);
+  background: var(--primary-soft);
   border-color: var(--primary-light);
 }
 
@@ -543,7 +582,7 @@ section {
 }
 
 .cal-day-cell.friday {
-  color: #EF4444;
+  color: #DC2626;
 }
 
 /* Time Slots Grid */
@@ -567,20 +606,20 @@ section {
 }
 
 .slot-btn:hover {
-  border-color: var(--primary-light);
-  background: #F1F5F9;
+  border-color: var(--primary);
+  background: var(--primary-soft);
 }
 
 .slot-btn.active {
-  background: var(--primary-light) !important;
+  background: var(--primary) !important;
   color: white !important;
-  border-color: var(--primary-light) !important;
+  border-color: var(--primary) !important;
 }
 
 .selected-appointment-badge {
-  background: #EFF6FF;
-  border: 1px solid #BFDBFE;
-  color: #1E40AF;
+  background: var(--primary-soft);
+  border: 1px solid #C5D7BF;
+  color: var(--primary-dark);
   padding: 8px 12px;
   border-radius: 8px;
   font-size: 0.82rem;

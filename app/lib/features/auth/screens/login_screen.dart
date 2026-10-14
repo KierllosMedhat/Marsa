@@ -106,34 +106,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     // Brand Icon & Title
                     Center(
                       child: Container(
-                        width: 72,
-                        height: 72,
+                        width: 84,
+                        height: 84,
                         decoration: BoxDecoration(
-                          color: theme.primaryColor.withAlpha(25),
                           shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFB58728), width: 2.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.primaryColor.withAlpha(40),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: Icon(
-                          Icons.anchor,
-                          size: 40,
-                          color: theme.primaryColor,
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/logo.jpg',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.psychology,
+                              size: 40,
+                              color: theme.primaryColor,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'مرساة للطب النفسي',
+                      'عيادة مرساة',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.primaryColor,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
-                      'تسجيل دخول الطبيب المعتمد',
+                      'د. مارينا نبيه نمر — أخصائي الطب النفسي وعلاج الإدمان',
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[700],
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF8E6513),
                       ),
                     ),
                     const SizedBox(height: 28),

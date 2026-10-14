@@ -6,13 +6,19 @@ import 'package:google_fonts/google_fonts.dart';
 /// Designed with a calm, warm paper-like aesthetic tailored for clinical environments,
 /// with native Arabic typography (Cairo) and deep maritime colors reflecting "مرساة" (Anchor).
 class AppTheme {
-  static const Color backgroundWarm = Color(0xFFF5F0E8); // Warm off-white paper
-  static const Color primaryNavy = Color(0xFF1B4F72); // Deep anchor navy
-  static const Color accentBlue = Color(0xFF2E86AB); // Mid blue
+  static const Color backgroundWarm = Color(0xFFF8FAF6); // Calming olive paper
+  static const Color primaryOlive = Color(0xFF45632D);   // Official Marsa Forest Olive Green
+  static const Color primaryDark = Color(0xFF2F451E);
+  static const Color primaryLight = Color(0xFF5B823D);
+  static const Color accentGold = Color(0xFFB58728);     // Official Warm Ochre Gold from Logo
   static const Color surfaceWhite = Color(0xFFFFFFFF);
-  static const Color cardBorder = Color(0xFFE8E0D5);
+  static const Color cardBorder = Color(0xFFDFE5DA);
   static const Color clinicalRed = Color(0xFF922B21);
-  static const Color darkCharcoal = Color(0xFF212121);
+  static const Color darkCharcoal = Color(0xFF1D2619);
+
+  // Backward compatibility aliases
+  static const Color primaryNavy = primaryOlive;
+  static const Color accentBlue = accentGold;
 
   static ThemeData get lightTheme {
     final baseTextTheme = Typography.material2021().black;
@@ -21,9 +27,9 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryNavy,
-        primary: primaryNavy,
-        secondary: accentBlue,
+        seedColor: primaryOlive,
+        primary: primaryOlive,
+        secondary: accentGold,
         surface: backgroundWarm,
         error: clinicalRed,
         brightness: Brightness.light,
@@ -32,7 +38,7 @@ class AppTheme {
       textTheme: cairoTextTheme,
       fontFamily: GoogleFonts.cairo().fontFamily,
       appBarTheme: AppBarTheme(
-        backgroundColor: primaryNavy,
+        backgroundColor: primaryOlive,
         foregroundColor: Colors.white,
         elevation: 1.5,
         centerTitle: true,
