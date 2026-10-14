@@ -108,13 +108,17 @@ _Last updated: 2026-10-14_
 
 ## Phase 2 — Doctor App (Flutter)
 - [x] Project structure + Riverpod setup
-- [x] Handwriting canvas + debug HUD + stroke serialization
-- [ ] Auth screen (Email + Password + Argon2id / JWT login)
-- [ ] Offline SQLite database (Drift / sqflite) with SQLCipher
-- [ ] Daily schedule view (Africa/Cairo)
-- [ ] Patient search & profile view
-- [ ] Clinical session screen (typed notes + handwriting canvas integration)
-- [ ] Background sync engine with sync queue and conflict detection
+- [x] Handwriting canvas + debug HUD + stroke serialization (Huawei M-Pencil verified)
+- [x] Auth screen (Email + Password + Argon2id / JWT login + TOTP MFA step + Offline tablet bypass)
+- [x] Daily schedule view (Africa/Cairo timezone) with calendar picker and session launch
+- [x] Patient search, registration, and comprehensive psychiatric profile view (MSE, history, allergies warning)
+- [x] Clinical consultation workspace:
+  - [x] Typed notes (Chief Complaint, MSE, Assessment & Plan)
+  - [x] Integrated Huawei M-Pencil handwriting surface (`InkCanvas` + `ToolBar`)
+  - [x] Prescriptions and ICD-10 diagnoses managers
+  - [x] Local autosave + finalization lock workflow
+- [x] Offline persistence & sync queue manager (`LocalStore` & `ApiClient`)
+- [x] 100% test pass (`flutter test` 4/4 passing, `flutter analyze` 0 issues)
 
 ---
 

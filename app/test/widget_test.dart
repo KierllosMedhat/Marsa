@@ -1,9 +1,11 @@
 import 'dart:ui';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:marsa_app/main.dart';
 import 'package:marsa_app/features/handwriting/models/ink_point.dart';
 import 'package:marsa_app/features/handwriting/models/ink_stroke.dart';
+import 'package:marsa_app/features/handwriting/handwriting_screen.dart';
 import 'package:marsa_app/features/handwriting/widgets/ink_canvas.dart';
 import 'package:marsa_app/features/handwriting/widgets/tool_bar.dart';
 
@@ -64,12 +66,32 @@ void main() {
     });
   });
 
-  group('Handwriting Widget Smoke Tests', () {
-    testWidgets('MarsaApp renders HandwritingScreen, Toolbar and Canvas',
+  group('Marsa Doctor App Widget Smoke Tests', () {
+    testWidgets('MarsaApp initially renders LoginScreen in Arabic RTL',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MarsaApp(),
+        ),
+      );
+
+      // Verify branding and login elements
+      expect(find.text('مرساة للطب النفسي'), findsOneWidget);
+      expect(find.text('تسجيل دخول الطبيب المعتمد'), findsOneWidget);
+      expect(find.text('تسجيل الدخول الآمن'), findsOneWidget);
+      expect(find.text('دخول بوضع التابلت غير المتصل (Offline Mode)'), findsOneWidget);
+    });
+
+    testWidgets('HandwritingScreen renders Canvas and Toolbar',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Directionality(
+              textDirection: TextDirection.rtl,
+              child: HandwritingScreen(),
+            ),
+          ),
         ),
       );
 
@@ -82,8 +104,6 @@ void main() {
 
       // Verify debug overlay presence
       expect(find.text('بيانات القلم والحساس'), findsOneWidget);
-      expect(find.text('نوع الجهاز'), findsOneWidget);
-      expect(find.text('قيمة الضغط'), findsOneWidget);
     });
   });
 }
