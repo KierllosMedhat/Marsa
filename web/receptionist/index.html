@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مرساة — بوابة موظف الاستقبال</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1B4F72">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="5" r="3"></circle>
+        <line x1="12" y1="22" x2="12" y2="8"></line>
+        <path d="M5 12H2a10 10 0 0 0 20 0h-3"></path>
+      </svg>
+      <h1>مرساة للطب النفسي</h1>
+      <span class="brand-badge">بوابة الاستقبال</span>
+    </div>
+    <div class="user-nav" id="userNav" style="display: none;">
+      <span class="user-name" id="staffNameDisplay">موظف الاستقبال</span>
+      <button class="btn-logout" id="btnLogout">تسجيل الخروج</button>
+    </div>
+  </header>
+
+  <!-- Login Section (shown when unauthenticated) -->
+  <div class="login-container" id="loginSection">
+    <div class="card login-card">
+      <div class="card-header" style="justify-content: center; text-align: center;">
+        <h2 class="card-title">تسجيل دخول موظف الاستقبال</h2>
+      </div>
+      <div class="privacy-banner" style="margin-bottom: 20px;">
+        <span>🔒 بوابة مخصصة للمهام الإدارية وحجز المواعيد. لا تتيح هذه البوابة الوصول للسجلات السريرية أو الملاحظات النفسية لحماية خصوصية المرضى.</span>
+      </div>
+      <div id="loginError" style="display:none; color: var(--danger); background: var(--danger-bg); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85rem;"></div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>البريد الإلكتروني المهني</label>
+          <input type="email" id="loginEmail" class="form-control" value="receptionist@marsa.clinic" required dir="ltr">
+        </div>
+        <div class="form-group">
+          <label>كلمة المرور</label>
+          <input type="password" id="loginPassword" class="form-control" required dir="ltr">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; margin-top: 10px;">تسجيل الدخول</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Authenticated Main Dashboard -->
+  <div id="dashboardSection" style="display: none;">
+    
+    <!-- Tabs Navigation -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" data-tab="tab-schedule">
+        📅 مواعيد اليوم والحضور
+      </button>
+      <button class="tab-btn" data-tab="tab-patients">
+        👥 دليل المرضى والملفات
+      </button>
+      <button class="tab-btn" data-tab="tab-bookings">
+        📥 طلبات الحجز من الموقع <span class="badge" id="bookingsCountBadge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-instructions">
+        📖 دليل الاستخدام والتعليمات
+      </button>
+    </nav>
+
+    <main>
+      <!-- Privacy Banner Notice -->
+      <div class="privacy-banner">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        <div>
+          <strong>نظام حماية خصوصية بيانات المرضى مفعل:</strong>
+          حساب موظف الاستقبال مصرح له بإدارة بيانات التواصل والحجوزات وحالة الحضور فقط. السجلات والتشخيصات النفسية محجوبة برمجياً ومحصورة بالطبيب المعالج.
+        </div>
+      </div>
+
+      <!-- Tab 1: Today's Schedule -->
+      <section id="tab-schedule" class="tab-content active">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">جدول مواعيد العيادة والحضور</h2>
+              <span id="currentDateDisplay" style="color: var(--text-muted); font-size: 0.85rem;"></span>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-outline" id="btnRefreshAppointments">🔄 تحديث</button>
+              <button class="btn btn-primary" id="btnOpenBookModal">➕ حجز موعد جديد</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>الموعد</th>
+                  <th>اسم المريض</th>
+                  <th>رقم الملف (MRN)</th>
+                  <th>رقم الهاتف</th>
+                  <th>نوع الجلسة</th>
+                  <th>الحالة</th>
+                  <th>تسجيل الحضور / الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="appointmentsTableBody">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">جاري تحميل المواعيد...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 2: Patients Directory -->
+      <section id="tab-patients" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">دليل المرضى وسجلات التواصل</h2>
+            <button class="btn btn-primary" id="btnOpenNewPatientModal">➕ تسجيل مريض جديد</button>
+          </div>
+
+          <div class="form-group" style="max-width: 500px;">
+            <input type="text" id="patientSearchInput" class="form-control" placeholder="ابحث بالاسم العربي، رقم الهاتف، أو رقم الملف (MRN)...">
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>رقم الملف الطبي</th>
+                  <th>الاسم بالعربية</th>
+                  <th>الاسم بالإنجليزية</th>
+                  <th>رقم الهاتف</th>
+                  <th>البريد الإلكتروني</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="patientsTableBody">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">جاري تحميل المرضى...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 3: Public Booking Requests Queue -->
+      <section id="tab-bookings" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">طلبات الحجز الواردة من الموقع العام</h2>
+              <span style="font-size: 0.85rem; color: var(--text-muted);">مراجعة وتأكيد طلبات الحجز وربطها الآمن بالمرضى</span>
+            </div>
+            <button class="btn btn-outline" id="btnRefreshBookings">🔄 تحديث الطلبات</button>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>التاريخ</th>
+                  <th>اسم مقدم الطلب</th>
+                  <th>رقم الهاتف</th>
+                  <th>الفترة المفضلة</th>
+                  <th>الحالة</th>
+                  <th>ملاحظات مقدم الطلب</th>
+                  <th>المراجعة والربط</th>
+                </tr>
+              </thead>
+              <tbody id="bookingsTableBody">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">جاري التحميل...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 4: User Manual & Instructions -->
+      <section id="tab-instructions" class="tab-content">
+        <div class="card">
+          <h2 class="card-title" style="margin-bottom: 16px;">📖 دليل عمل وإرشادات موظف الاستقبال — عيادة مرساة</h2>
+          
+          <div style="line-height: 1.8; font-size: 0.95rem; color: #334155;">
+            <h3 style="color: var(--primary); margin: 16px 0 8px;">1. سياسة خصوصية السجلات السريرية</h3>
+            <p>وفقاً لأعلى معايير حماية البيانات والسرية الطبية النفسية، لا تظهر السجلات الطبية أو التشخيصات أو الأدوية أو الملاحظات السريرية في واجهة موظف الاستقبال. دور موظف الاستقبال مقتصر تماماً على التنسيق الإداري والمواعيد.</p>
+
+            <h3 style="color: var(--primary); margin: 16px 0 8px;">2. تسجيل حضور وغياب المرضى</h3>
+            <p>عند وصول المريض إلى العيادة، اضغط زر <strong>"تسجيل وصول"</strong> ليظهر للطبيب في التابلت فوراً أن المريض متواجد في صالة الانتظار. في حال عدم الحضور، يتم تسجيل <strong>"غائب"</strong> لحفظ سجل الالتزام بالمواعيد.</p>
+
+            <h3 style="color: var(--primary); margin: 16px 0 8px;">3. منع ازدواجية ملفات المرضى (Duplicate Prevention)</h3>
+            <p>عند إضافة مريض جديد، يقوم النظام تلقائياً بفحص تشابه الأسماء وأرقام الهواتف. في حال وجود مريض مسجل مسبقاً بنفس الاسم أو الهاتف، سيظهر تنبيه توجيهي للتأكد قبل فتح ملف جديد.</p>
+
+            <h3 style="color: var(--primary); margin: 16px 0 8px;">4. مراجعة طلبات الحجز العامة (Triage)</h3>
+            <p>الطلبات الواردة من الموقع العام <strong>لا يتم دمجها تلقائياً</strong> مع أي مريض لمنع التداخل بين الحسابات. يتولى موظف الاستقبال فحص الطلب وربطه بالملف الطبي الصحيح يدوياً بعد التأكد من هوية المريض.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal: Book New Appointment -->
+  <div class="modal-overlay" id="bookModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="card-title">حجز موعد جديد في العيادة</h3>
+        <button class="btn btn-outline btn-sm" id="btnCloseBookModal">✕</button>
+      </div>
+      <form id="bookAppointmentForm">
+        <div class="form-group">
+          <label>اختر المريض *</label>
+          <select id="bookPatientSelect" class="form-control" required>
+            <option value="">جاري تحميل المرضى...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>نوع الجلسة *</label>
+          <select id="bookTypeSelect" class="form-control" required>
+            <option value="">جاري تحميل أنواع الجلسات...</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>التاريخ والوقت *</label>
+            <input type="datetime-local" id="bookDateTime" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>ملاحظات إدارية (اختياري)</label>
+          <input type="text" id="bookNotes" class="form-control" placeholder="ملاحظات الحضور أو الترتيبات الخاصة...">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btnCancelBookModal">إلغاء</button>
+          <button type="submit" class="btn btn-primary">تأكيد الحجز</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: New Patient Registration -->
+  <div class="modal-overlay" id="patientModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="card-title">تسجيل مريض جديد (بيانات الاتصال فقط)</h3>
+        <button class="btn btn-outline btn-sm" id="btnClosePatientModal">✕</button>
+      </div>
+      <form id="newPatientForm">
+        <div class="form-group">
+          <label>الاسم ثلاثي أو رباعي بالعربية *</label>
+          <input type="text" id="newPatientNameAr" class="form-control" required placeholder="مثال: محمد عبد الرحمن إبراهيم">
+        </div>
+        <div class="form-group">
+          <label>الاسم بالإنجليزية (اختياري)</label>
+          <input type="text" id="newPatientNameEn" class="form-control" placeholder="Mohamed Abdelrahman" dir="ltr">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>رقم الهاتف *</label>
+            <input type="tel" id="newPatientPhone" class="form-control" required placeholder="01012345678" dir="ltr">
+          </div>
+          <div class="form-group">
+            <label>النوع</label>
+            <select id="newPatientSex" class="form-control">
+              <option value="male">ذكر</option>
+              <option value="female">أنثى</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>البريد الإلكتروني (اختياري)</label>
+          <input type="email" id="newPatientEmail" class="form-control" placeholder="patient@example.com" dir="ltr">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btnCancelPatientModal">إلغاء</button>
+          <button type="submit" class="btn btn-primary">حفظ المريض وتوليد الـ MRN</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Match Booking Request -->
+  <div class="modal-overlay" id="matchModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="card-title">مراجعة وربط طلب الحجز العام</h3>
+        <button class="btn btn-outline btn-sm" id="btnCloseMatchModal">✕</button>
+      </div>
+      <div id="matchRequestDetails" style="background: #F8FAFC; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.88rem;"></div>
+      <form id="matchRequestForm">
+        <input type="hidden" id="matchRequestId">
+        <div class="form-group">
+          <label>اختر المريض المطابق من قاعدة البيانات *</label>
+          <select id="matchPatientSelect" class="form-control" required>
+            <option value="">اختر مريضاً...</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-sm" id="btnRejectRequest">رفض الطلب</button>
+          <button type="submit" class="btn btn-success">تأكيد الربط بالمريض</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

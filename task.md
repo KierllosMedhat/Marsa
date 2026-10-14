@@ -123,11 +123,15 @@ _Last updated: 2026-10-14_
 ---
 
 ## Phase 3 — Receptionist Interface (PWA / Mobile Web)
-- [ ] Responsive web portal (FastAPI + Jinja2 / HTMX or Vue/React)
-- [ ] Restricted patient search & registration (contact info only)
-- [ ] Appointment calendar & availability management
-- [ ] Check-in & attendance recording
-- [ ] Booking request triage & safe merge screen
+- [x] Responsive web portal (`web/receptionist/`) with Cairo font and Arabic RTL layout
+- [x] PWA support with `manifest.json` and `sw.js` (home screen installation on Android/iOS phones)
+- [x] Restricted patient search & registration (contact info only — zero clinical access)
+- [x] Duplicate detection warning modal upon patient registration
+- [x] Appointment calendar & booking workflow
+- [x] Live check-in & attendance recording (`PATCH /appointments/{id}/status` -> arrived / completed / no-show)
+- [x] Public booking request triage & safe merge queue (`POST /booking-requests/{id}/match` & `/reject`)
+- [x] Built-in user manual & privacy compliance documentation
+- [x] FastAPI static mount at `/receptionist` and 26 automated tests passing (100% pass)
 
 ---
 

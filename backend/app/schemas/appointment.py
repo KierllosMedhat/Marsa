@@ -69,6 +69,12 @@ class BookingRequestResponse(BaseModel):
     status: BookingStatus
     matching_patient_id: uuid.UUID | None = None
     notes: str | None = None
-    created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
+
+
+class AppointmentStatusUpdate(BaseModel):
+    status: AppointmentStatus
+
+
+class BookingMatchRequest(BaseModel):
+    patient_id: uuid.UUID

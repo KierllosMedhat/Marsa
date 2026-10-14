@@ -11,8 +11,10 @@ from app.models.staff import Staff, StaffRole
 from app.schemas.appointment import (
     AppointmentCreate,
     AppointmentResponse,
+    AppointmentStatusUpdate,
     AppointmentTypeCreate,
     AppointmentTypeResponse,
+    BookingMatchRequest,
     BookingRequestCreate,
     BookingRequestResponse,
 )
@@ -137,3 +139,57 @@ async def list_booking_requests(
         select(BookingRequest).order_by(BookingRequest.created_at.desc())
     )
     return result.scalars().all()
+
+
+@router.patch("/{appointment_id}/status", response_model=AppointmentResponse)
+async def update_appointment_status(
+    appointment_id: uuid.UUID,
+    payload: AppointmentStatusUpdate,
+    current_staff: Staff = Depends(require_role(StaffRole.doctor, StaffRole.receptionist, StaffRole.admin)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update appointment attendance/status (e.g., arrived, completed, no_show, cancelled)."""
+    appt = await db.get(Appointment, appointment_id)
+    if not appt:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+
+    appt.status = payload.status
+    await db.commit()
+    await db.refresh(appt)
+    return appt
+
+
+@router.post("/booking-requests/{request_id}/match", response_model=BookingRequestResponse)
+async def match_booking_request(
+    request_id: uuid.UUID,
+    payload: BookingMatchRequest,
+    current_staff: Staff = Depends(require_role(StaffRole.doctor, StaffRole.receptionist, StaffRole.admin)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Safely match a public booking request with a verified patient record."""
+    req = await db.get(BookingRequest, request_id)
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking request not found")
+
+    req.matching_patient_id = payload.patient_id
+    req.status = BookingStatus.matched
+    await db.commit()
+    await db.refresh(req)
+    return req
+
+
+@router.post("/booking-requests/{request_id}/reject", response_model=BookingRequestResponse)
+async def reject_booking_request(
+    request_id: uuid.UUID,
+    current_staff: Staff = Depends(require_role(StaffRole.doctor, StaffRole.receptionist, StaffRole.admin)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark an unviable or invalid booking request as rejected."""
+    req = await db.get(BookingRequest, request_id)
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking request not found")
+
+    req.status = BookingStatus.rejected
+    await db.commit()
+    await db.refresh(req)
+    return req

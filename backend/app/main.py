@@ -49,6 +49,13 @@ def create_app() -> FastAPI:
     app.include_router(clinical_router)
     app.include_router(appointments_router)
 
+    # Mount Receptionist Portal static web files
+    import os
+    from fastapi.staticfiles import StaticFiles
+    receptionist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "web", "receptionist"))
+    if os.path.exists(receptionist_dir):
+        app.mount("/receptionist", StaticFiles(directory=receptionist_dir, html=True), name="receptionist")
+
     return app
 
 
