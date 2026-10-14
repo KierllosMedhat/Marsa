@@ -204,6 +204,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
+  /// Offline Receptionist Sign-in mode for tablet/phone when offline
+  Future<void> signInOfflineReceptionist() async {
+    final offlineReceptionist = StaffUser(
+      staffId: 'offline-recep-01',
+      role: 'receptionist',
+      nameAr: 'مسؤول الاستقبال',
+      nameEn: 'Receptionist',
+      email: 'receptionist@marsa.clinic',
+      mfaEnabled: false,
+    );
+
+    await _localStore.saveAuth(
+      accessToken: 'offline_token_receptionist',
+      refreshToken: 'offline_refresh',
+      staffUser: offlineReceptionist.toJson(),
+    );
+
+    state = state.copyWith(
+      isAuthenticated: true,
+      user: offlineReceptionist,
+      errorMessage: null,
+    );
+  }
+
   Future<void> logout() async {
     await _localStore.clearAuth();
     _apiClient.clearTokens();

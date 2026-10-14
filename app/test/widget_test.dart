@@ -78,7 +78,10 @@ void main() {
       expect(find.text('عيادة مرساة'), findsOneWidget);
       expect(find.text('د. مارينا نبيه نمر — أخصائي الطب النفسي وعلاج الإدمان'), findsOneWidget);
       expect(find.text('تسجيل الدخول الآمن'), findsOneWidget);
-      expect(find.text('دخول بوضع التابلت غير المتصل (Offline Mode)'), findsOneWidget);
+      expect(find.text('دخول الطبيب'), findsOneWidget);
+      expect(find.text('دخول الاستقبال'), findsOneWidget);
+      expect(find.text('طبيب (Offline)'), findsOneWidget);
+      expect(find.text('استقبال (Offline)'), findsOneWidget);
     });
 
     testWidgets('HandwritingScreen renders Canvas and Toolbar',

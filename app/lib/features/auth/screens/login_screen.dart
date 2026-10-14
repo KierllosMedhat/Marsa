@@ -80,7 +80,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('مرساة — بوابة الأطباء'),
+        title: const Text('مرساة — بوابة الكادر الطبي والاستقبال'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_ethernet),
@@ -177,6 +177,107 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
 
                     if (!authState.requiresMfa) ...[
+                      // Role Selector Pills
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5E9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFD5E2CE)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _emailController.text = 'doctor@marsa.clinic';
+                                    _passwordController.text = 'DoctorSecret123!';
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: !_emailController.text.contains('receptionist')
+                                        ? const Color(0xFF45632D)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.medical_services_outlined,
+                                        size: 16,
+                                        color: !_emailController.text.contains('receptionist')
+                                            ? Colors.white
+                                            : Colors.black87,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'دخول الطبيب',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: !_emailController.text.contains('receptionist')
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _emailController.text = 'receptionist@marsa.clinic';
+                                    _passwordController.text = 'RecepSecret123!';
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: _emailController.text.contains('receptionist')
+                                        ? const Color(0xFF45632D)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.desk_outlined,
+                                        size: 16,
+                                        color: _emailController.text.contains('receptionist')
+                                            ? Colors.white
+                                            : Colors.black87,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'دخول الاستقبال',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: _emailController.text.contains('receptionist')
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       TextField(
                         controller: _emailController,
                         decoration: const InputDecoration(
@@ -290,17 +391,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const Divider(),
                     const SizedBox(height: 12),
 
-                    // Offline Tablet Mode Button
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.wifi_off_outlined),
-                      label: const Text('دخول بوضع التابلت غير المتصل (Offline Mode)'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: BorderSide(color: Colors.blueGrey.shade400),
-                      ),
-                      onPressed: () {
-                        ref.read(authProvider.notifier).signInOffline();
-                      },
+                    // Offline Tablet Mode Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.wifi_off_outlined, size: 16),
+                            label: const Text('طبيب (Offline)', style: TextStyle(fontSize: 12)),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              side: BorderSide(color: Colors.blueGrey.shade300),
+                            ),
+                            onPressed: () {
+                              ref.read(authProvider.notifier).signInOffline();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.wifi_off_outlined, size: 16),
+                            label: const Text('استقبال (Offline)', style: TextStyle(fontSize: 12)),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              side: BorderSide(color: Colors.blueGrey.shade300),
+                            ),
+                            onPressed: () {
+                              ref.read(authProvider.notifier).signInOfflineReceptionist();
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
