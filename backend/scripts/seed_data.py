@@ -22,8 +22,8 @@ async def seed():
         doctor = Staff(
             staff_id=uuid.uuid4(),
             role=StaffRole.doctor,
-            name_ar="د. أحمد استشاري الطب النفسي",
-            name_en="Dr. Ahmed Psychiatrist",
+            name_ar="د. مارينا نبيه نمر",
+            name_en="Dr. Marina Nabih Nemer",
             email="doctor@marsa.clinic",
             phone="01000000001",
             password_hash=doc_pwd,

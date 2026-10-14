@@ -69,7 +69,7 @@ class DoctorDashboardScreen extends ConsumerWidget {
               child: Icon(Icons.person, size: 16, color: Colors.white),
             ),
             label: Text(
-              authState.user?.nameAr ?? 'د. الطبيب',
+              authState.user?.nameAr ?? 'د. مارينا نبيه نمر',
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
             backgroundColor: theme.primaryColorDark,
