@@ -1,0 +1,176 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  return ApiClient();
+});
+
+class ApiResponse<T> {
+  final bool isSuccess;
+  final T? data;
+  final String? errorMessage;
+  final int statusCode;
+
+  ApiResponse({
+    required this.isSuccess,
+    this.data,
+    this.errorMessage,
+    required this.statusCode,
+  });
+}
+
+class ApiClient {
+  // In development, default to localhost / 10.0.2.2. Can be configured dynamically.
+  String _baseUrl = 'http://localhost:8000';
+  String? _accessToken;
+  String? _refreshToken;
+
+  String get baseUrl => _baseUrl;
+  String? get refreshToken => _refreshToken;
+
+  void setBaseUrl(String url) {
+    _baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+  }
+
+  void setTokens({required String accessToken, String? refreshToken}) {
+    _accessToken = accessToken;
+    _refreshToken = refreshToken;
+  }
+
+  void clearTokens() {
+    _accessToken = null;
+    _refreshToken = null;
+  }
+
+  Map<String, String> _buildHeaders({bool includeAuth = true}) {
+    final headers = <String, String>{
+      'Content-Type': 'application/json; charset=utf-8',
+      'Accept': 'application/json',
+    };
+    if (includeAuth && _accessToken != null) {
+      headers['Authorization'] = 'Bearer $_accessToken';
+    }
+    return headers;
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> get(
+    String endpoint, {
+    Map<String, String>? queryParams,
+    bool includeAuth = true,
+  }) async {
+    try {
+      var uri = Uri.parse('$_baseUrl$endpoint');
+      if (queryParams != null && queryParams.isNotEmpty) {
+        uri = uri.replace(queryParameters: queryParams);
+      }
+
+      final response = await http.get(
+        uri,
+        headers: _buildHeaders(includeAuth: includeAuth),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse(
+        isSuccess: false,
+        statusCode: 0,
+        errorMessage: 'تعذر الاتصال بالخادم: ${e.toString()}',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> post(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool includeAuth = true,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl$endpoint');
+      final response = await http.post(
+        uri,
+        headers: _buildHeaders(includeAuth: includeAuth),
+        body: body != null ? jsonEncode(body) : null,
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse(
+        isSuccess: false,
+        statusCode: 0,
+        errorMessage: 'تعذر الاتصال بالخادم: ${e.toString()}',
+      );
+    }
+  }
+
+  Future<ApiResponse<List<dynamic>>> getList(
+    String endpoint, {
+    Map<String, String>? queryParams,
+    bool includeAuth = true,
+  }) async {
+    try {
+      var uri = Uri.parse('$_baseUrl$endpoint');
+      if (queryParams != null && queryParams.isNotEmpty) {
+        uri = uri.replace(queryParameters: queryParams);
+      }
+
+      final response = await http.get(
+        uri,
+        headers: _buildHeaders(includeAuth: includeAuth),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        return ApiResponse(
+          isSuccess: true,
+          statusCode: response.statusCode,
+          data: decoded is List ? decoded : [decoded],
+        );
+      } else {
+        return ApiResponse(
+          isSuccess: false,
+          statusCode: response.statusCode,
+          errorMessage: 'خطأ: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      return ApiResponse(
+        isSuccess: false,
+        statusCode: 0,
+        errorMessage: 'تعذر الاتصال: $e',
+      );
+    }
+  }
+
+  ApiResponse<Map<String, dynamic>> _handleResponse(http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      try {
+        final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        return ApiResponse(
+          isSuccess: true,
+          statusCode: response.statusCode,
+          data: data,
+        );
+      } catch (_) {
+        return ApiResponse(
+          isSuccess: true,
+          statusCode: response.statusCode,
+          data: {},
+        );
+      }
+    } else {
+      String error = 'حدث خطأ غير متوقع (${response.statusCode})';
+      try {
+        final errorJson = jsonDecode(utf8.decode(response.bodyBytes));
+        if (errorJson is Map && errorJson.containsKey('detail')) {
+          error = errorJson['detail'].toString();
+        }
+      } catch (_) {}
+      return ApiResponse(
+        isSuccess: false,
+        statusCode: response.statusCode,
+        errorMessage: error,
+      );
+    }
+  }
+}

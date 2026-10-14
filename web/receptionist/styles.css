@@ -353,12 +353,15 @@ tr:hover td {
 .modal {
   background: white;
   border-radius: var(--radius);
-  max-width: 540px;
+  max-width: min(540px, 100%);
   width: 100%;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
-  padding: 24px;
+  padding: clamp(16px, 4vw, 24px);
+  margin: auto;
 }
 
 .modal-header {
@@ -373,7 +376,8 @@ tr:hover td {
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid var(--border-color);
@@ -385,6 +389,7 @@ tr:hover td {
   justify-content: center;
   align-items: center;
   min-height: 80vh;
+  padding: 16px;
 }
 
 .login-card {
@@ -397,17 +402,60 @@ tr:hover td {
   header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+  .user-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .card-header > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .form-row {
     flex-direction: column;
     gap: 0;
   }
   main {
-    padding: 12px;
+    padding: 12px 8px;
   }
   .tabs-nav {
-    padding: 0 12px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+  .tab-btn {
+    padding: 10px 12px;
+    font-size: 0.84rem;
+    white-space: nowrap;
+  }
+  .modal {
+    padding: 14px;
+  }
+  .slots-grid {
+    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .btn {
+    padding: 7px 12px;
+    font-size: 0.82rem;
+  }
+  .modal-footer {
+    flex-direction: column;
+  }
+  .modal-footer .btn {
+    width: 100%;
+  }
+  .search-box {
+    max-width: 100%;
   }
 }
 
