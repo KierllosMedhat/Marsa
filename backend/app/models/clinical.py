@@ -1,0 +1,345 @@
+import enum
+import uuid
+from datetime import date, datetime
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text, Uuid, JSON
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.database import Base, utcnow
+
+
+class DiagnosisStatus(str, enum.Enum):
+    active = "active"
+    resolved = "resolved"
+    in_remission = "in_remission"
+
+
+class SessionStatus(str, enum.Enum):
+    draft = "draft"
+    finalized = "finalized"
+
+
+class NoteType(str, enum.Enum):
+    typed = "typed"
+    handwritten = "handwritten"
+    mixed = "mixed"
+
+
+class PatientClinical(Base):
+    """Sensitive clinical background data for a patient, strictly separated from demographics."""
+
+    __tablename__ = "patient_clinical"
+
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("patients.patient_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    # Encrypted fields using AES-256-GCM
+    medical_history: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted medical history / التاريخ الطبي مشفر",
+    )
+    psychiatric_history: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted psychiatric history / التاريخ النفسي مشفر",
+    )
+    family_history: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted family history / التاريخ المرضي العائلي مشفر",
+    )
+    social_history: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted social history / التاريخ الاجتماعي مشفر",
+    )
+    allergies: Mapped[list | dict | None] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"),
+        nullable=True,
+        comment="Known allergies list / الحساسية المعروفة",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+        nullable=False,
+    )
+    updated_by: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("staff.staff_id"),
+        nullable=False,
+    )
+
+    # Relationships
+    patient = relationship("Patient", back_populates="clinical_record")
+    updater = relationship("Staff", foreign_keys=[updated_by])
+
+
+class Diagnosis(Base):
+    """Psychiatric and medical diagnoses assigned to a patient."""
+
+    __tablename__ = "diagnoses"
+
+    diagnosis_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("patients.patient_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    icd10_code: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+        comment="ICD-10 classification code (e.g. F32.1) / رمز التصنيف الدولي للأمراض",
+    )
+    description_ar: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        comment="Arabic diagnosis description / وصف التشخيص بالعربية",
+    )
+    description_en: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="English diagnosis description / وصف التشخيص بالإنجليزية",
+    )
+    date_diagnosed: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        comment="Date diagnosis was made / تاريخ التشخيص",
+    )
+    status: Mapped[DiagnosisStatus] = mapped_column(
+        Enum(DiagnosisStatus, name="diagnosis_status_enum", native_enum=False),
+        nullable=False,
+        default=DiagnosisStatus.active,
+    )
+    author_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("staff.staff_id"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        nullable=False,
+    )
+    finalized_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # Relationships
+    patient = relationship("Patient", back_populates="diagnoses")
+    author = relationship("Staff", foreign_keys=[author_id])
+
+
+class Medication(Base):
+    """Psychiatric and medical prescriptions for a patient."""
+
+    __tablename__ = "medications"
+
+    medication_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("patients.patient_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name_ar: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        comment="Medication name in Arabic / اسم الدواء بالعربية",
+    )
+    name_en: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Medication trade or generic name in English / اسم الدواء بالإنجليزية",
+    )
+    dose: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Dosage (e.g. 20mg) / الجرعة",
+    )
+    frequency: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Frequency (e.g. once daily at bedtime) / التكرار ومواعيد التناول",
+    )
+    route: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Route (e.g. oral) / طريقة التناول",
+    )
+    start_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+    end_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+    notes: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    prescribed_by: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("staff.staff_id"),
+        nullable=False,
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        nullable=False,
+    )
+
+    # Relationships
+    patient = relationship("Patient", back_populates="medications")
+    prescriber = relationship("Staff", foreign_keys=[prescribed_by])
+
+
+class Session(Base):
+    """Clinical therapy or consultation session linked to an appointment."""
+
+    __tablename__ = "sessions"
+
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("patients.patient_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    appointment_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("appointments.appointment_id"),
+        nullable=True,
+        index=True,
+    )
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    status: Mapped[SessionStatus] = mapped_column(
+        Enum(SessionStatus, name="session_status_enum", native_enum=False),
+        nullable=False,
+        default=SessionStatus.draft,
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("staff.staff_id"),
+        nullable=False,
+    )
+    finalized_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("staff.staff_id"),
+        nullable=True,
+    )
+    finalized_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        nullable=False,
+    )
+
+    # Relationships
+    patient = relationship("Patient", back_populates="sessions")
+    appointment = relationship("Appointment", back_populates="session")
+    notes = relationship(
+        "SessionNote",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="SessionNote.version.desc()",
+    )
+    creator = relationship("Staff", foreign_keys=[created_by])
+    finalizer = relationship("Staff", foreign_keys=[finalized_by])
+
+
+class SessionNote(Base):
+    """Clinical session notes with versioning and encryption."""
+
+    __tablename__ = "session_notes"
+
+    note_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("sessions.session_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    note_type: Mapped[NoteType] = mapped_column(
+        Enum(NoteType, name="note_type_enum", native_enum=False),
+        nullable=False,
+        default=NoteType.typed,
+    )
+    content_typed: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted typed note content (AES-256-GCM) / ملاحظات الجلسة مشفرة",
+    )
+    content_ink_ref: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="File storage reference for handwritten strokes / مرجع ملف الخط اليدوي",
+    )
+    version: Mapped[int] = mapped_column(
+        Integer,
+        default=1,
+        nullable=False,
+    )
+    is_draft: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+    amended_from: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("session_notes.note_id"),
+        nullable=True,
+        comment="Self-FK to previous version if this note is an amendment",
+    )
+    edited_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        nullable=False,
+    )
+    edited_by: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("staff.staff_id"),
+        nullable=False,
+    )
+
+    # Relationships
+    session = relationship("Session", back_populates="notes")
+    editor = relationship("Staff", foreign_keys=[edited_by])
+    previous_note = relationship("SessionNote", remote_side=[note_id])
