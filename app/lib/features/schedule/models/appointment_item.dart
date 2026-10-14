@@ -25,6 +25,12 @@ class AppointmentItem {
 
   bool get isConfirmed => status == 'confirmed';
   bool get isCompleted => status == 'completed';
+  String get id => appointmentId;
+  String get timeFormatted {
+    final hour = slotStart.hour.toString().padLeft(2, '0');
+    final minute = slotStart.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
 
   factory AppointmentItem.fromJson(Map<String, dynamic> json) {
     return AppointmentItem(

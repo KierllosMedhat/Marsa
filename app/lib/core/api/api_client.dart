@@ -103,6 +103,52 @@ class ApiClient {
     }
   }
 
+  Future<ApiResponse<Map<String, dynamic>>> patch(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool includeAuth = true,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl$endpoint');
+      final response = await http.patch(
+        uri,
+        headers: _buildHeaders(includeAuth: includeAuth),
+        body: body != null ? jsonEncode(body) : null,
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse(
+        isSuccess: false,
+        statusCode: 0,
+        errorMessage: 'تعذر الاتصال بالخادم: ${e.toString()}',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> put(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool includeAuth = true,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl$endpoint');
+      final response = await http.put(
+        uri,
+        headers: _buildHeaders(includeAuth: includeAuth),
+        body: body != null ? jsonEncode(body) : null,
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse(
+        isSuccess: false,
+        statusCode: 0,
+        errorMessage: 'تعذر الاتصال بالخادم: ${e.toString()}',
+      );
+    }
+  }
+
   Future<ApiResponse<List<dynamic>>> getList(
     String endpoint, {
     Map<String, String>? queryParams,

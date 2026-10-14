@@ -19,7 +19,13 @@ class DoctorDashboardScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final scheduleState = ref.watch(scheduleProvider);
     final theme = Theme.of(context);
-    final dateFormat = DateFormat('EEEE، d MMMM yyyy', 'ar');
+    final DateFormat dateFormat = () {
+      try {
+        return DateFormat('EEEE، d MMMM yyyy', 'ar');
+      } catch (_) {
+        return DateFormat('yyyy/MM/dd');
+      }
+    }();
 
     return Scaffold(
       appBar: AppBar(
