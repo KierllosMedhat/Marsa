@@ -8,6 +8,26 @@ let currentStaff = null;
 let cachedPatients = [];
 let cachedTypes = [];
 
+// Calendar State for Receptionist
+let recCalCurrentDate = new Date();
+let recSelectedCalDate = null;
+let recSelectedTimeSlot = null;
+
+const REC_ARABIC_MONTHS = [
+  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+];
+
+const REC_CLINIC_SLOTS = [
+  { time24: '14:00', label: '02:00 م' },
+  { time24: '15:00', label: '03:00 م' },
+  { time24: '16:00', label: '04:00 م' },
+  { time24: '17:00', label: '05:00 م' },
+  { time24: '18:00', label: '06:00 م' },
+  { time24: '19:00', label: '07:00 م' },
+  { time24: '20:00', label: '08:00 م' },
+];
+
 // DOM Elements
 const loginSection = document.getElementById('loginSection');
 const dashboardSection = document.getElementById('dashboardSection');
@@ -60,10 +80,21 @@ function initModals() {
   // Book Modal
   document.getElementById('btnOpenBookModal').addEventListener('click', () => {
     populateBookSelects();
+    renderRecCalendar();
     bookModal.classList.add('active');
   });
   document.getElementById('btnCloseBookModal').addEventListener('click', () => bookModal.classList.remove('active'));
   document.getElementById('btnCancelBookModal').addEventListener('click', () => bookModal.classList.remove('active'));
+
+  // Receptionist Calendar Nav
+  document.getElementById('btnRecCalPrev').addEventListener('click', () => {
+    recCalCurrentDate.setMonth(recCalCurrentDate.getMonth() - 1);
+    renderRecCalendar();
+  });
+  document.getElementById('btnRecCalNext').addEventListener('click', () => {
+    recCalCurrentDate.setMonth(recCalCurrentDate.getMonth() + 1);
+    renderRecCalendar();
+  });
 
   // Patient Modal
   document.getElementById('btnOpenNewPatientModal').addEventListener('click', () => {
@@ -330,19 +361,141 @@ function populateBookSelects(selectedPatId = null) {
   }
 }
 
+function renderRecCalendar() {
+  const monthTitle = document.getElementById('recCalMonthTitle');
+  const daysGrid = document.getElementById('recCalDaysGrid');
+
+  const year = recCalCurrentDate.getFullYear();
+  const month = recCalCurrentDate.getMonth();
+
+  monthTitle.textContent = `${REC_ARABIC_MONTHS[month]} ${year}`;
+  daysGrid.innerHTML = '';
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const totalDays = lastDay.getDate();
+
+  const jsDay = firstDay.getDay();
+  const startOffset = (jsDay + 1) % 7;
+
+  for (let i = 0; i < startOffset; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'cal-day-cell disabled';
+    daysGrid.appendChild(empty);
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let d = 1; d <= totalDays; d++) {
+    const cellDate = new Date(year, month, d);
+    const dayOfWeek = (cellDate.getDay() + 1) % 7;
+    const isFriday = dayOfWeek === 6;
+    const isPast = cellDate < today;
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-day-cell';
+    cell.textContent = d;
+
+    if (isFriday) {
+      cell.classList.add('disabled', 'friday');
+      cell.title = 'عطلة العيادة';
+    } else if (isPast) {
+      cell.classList.add('disabled');
+    } else {
+      if (recSelectedCalDate && 
+          recSelectedCalDate.getFullYear() === year && 
+          recSelectedCalDate.getMonth() === month && 
+          recSelectedCalDate.getDate() === d) {
+        cell.classList.add('selected');
+      }
+
+      cell.addEventListener('click', () => {
+        recSelectedCalDate = new Date(year, month, d);
+        recSelectedTimeSlot = null;
+        document.querySelectorAll('#recCalDaysGrid .cal-day-cell').forEach(c => c.classList.remove('selected'));
+        cell.classList.add('selected');
+        renderRecTimeSlots();
+      });
+    }
+
+    daysGrid.appendChild(cell);
+  }
+
+  if (!recSelectedCalDate) {
+    const initialDay = today.getMonth() === month ? today.getDate() : 1;
+    const testDate = new Date(year, month, initialDay);
+    if ((testDate.getDay() + 1) % 7 !== 6 && testDate >= today) {
+      recSelectedCalDate = testDate;
+    }
+  }
+
+  renderRecTimeSlots();
+}
+
+function renderRecTimeSlots() {
+  const container = document.getElementById('recSlotsGrid');
+  const badge = document.getElementById('recSelectedSlotBadge');
+  const badgeText = document.getElementById('recSelectedSlotText');
+  const hiddenInput = document.getElementById('recSelectedSlotDateTime');
+
+  container.innerHTML = '';
+
+  if (!recSelectedCalDate) {
+    container.innerHTML = '<span style="color:var(--text-muted); font-size:0.85rem;">اختر يوماً من التقويم أولاً</span>';
+    badge.style.display = 'none';
+    hiddenInput.value = '';
+    return;
+  }
+
+  REC_CLINIC_SLOTS.forEach(slot => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'slot-btn';
+    btn.textContent = slot.label;
+
+    if (recSelectedTimeSlot === slot.time24) {
+      btn.classList.add('active');
+    }
+
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#recSlotsGrid .slot-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      recSelectedTimeSlot = slot.time24;
+
+      const y = recSelectedCalDate.getFullYear();
+      const m = String(recSelectedCalDate.getMonth() + 1).padLeft(2, '0');
+      const d = String(recSelectedCalDate.getDate()).padLeft(2, '0');
+      const isoSlot = `${y}-${m}-${d}T${slot.time24}:00+02:00`;
+      hiddenInput.value = isoSlot;
+
+      const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const dateLabel = recSelectedCalDate.toLocaleDateString('ar-EG', dateOptions);
+      badgeText.textContent = `الموعد المختار: ${dateLabel} — الساعة ${slot.label}`;
+      badge.style.display = 'flex';
+    });
+
+    container.appendChild(btn);
+  });
+}
+
 async function handleBookSubmit(e) {
   e.preventDefault();
   const patientId = document.getElementById('bookPatientSelect').value;
   const typeId = document.getElementById('bookTypeSelect').value || (cachedTypes[0] ? cachedTypes[0].type_id : null);
-  const dtVal = document.getElementById('bookDateTime').value;
+  const preferredSlot = document.getElementById('recSelectedSlotDateTime').value;
   const notes = document.getElementById('bookNotes').value.trim();
 
-  if (!dtVal || !typeId) {
-    alert('يرجى اختيار المريض ونوع الجلسة والوقت');
+  if (!preferredSlot) {
+    alert('يرجى اختيار اليوم والموعد من التقويم أولاً.');
+    return;
+  }
+  if (!patientId || !typeId) {
+    alert('يرجى اختيار المريض ونوع الجلسة');
     return;
   }
 
-  const slotStart = new Date(dtVal);
+  const slotStart = new Date(preferredSlot);
   const slotEnd = new Date(slotStart.getTime() + 45 * 60000);
 
   try {
@@ -357,7 +510,7 @@ async function handleBookSubmit(e) {
         type_id: typeId,
         slot_start: slotStart.toISOString(),
         slot_end: slotEnd.toISOString(),
-        notes: notes
+        notes: notes || null
       })
     });
 

@@ -227,12 +227,41 @@
             <option value="">جاري تحميل أنواع الجلسات...</option>
           </select>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>التاريخ والوقت *</label>
-            <input type="datetime-local" id="bookDateTime" class="form-control" required>
+
+        <!-- Interactive Calendar & Time Slots for Receptionist -->
+        <div class="calendar-picker-box">
+          <div class="calendar-header">
+            <span class="calendar-month-title" id="recCalMonthTitle">أكتوبر ٢٠٢٦</span>
+            <div style="display: flex; gap: 4px;">
+              <button type="button" class="btn-cal-nav" id="btnRecCalPrev">›</button>
+              <button type="button" class="btn-cal-nav" id="btnRecCalNext">‹</button>
+            </div>
+          </div>
+
+          <div class="calendar-weekdays">
+            <span>سبت</span><span>أحد</span><span>إثنين</span><span>ثلاثاء</span><span>أربعاء</span><span>خميس</span><span style="color:#EF4444;">جمعة</span>
+          </div>
+
+          <div class="calendar-days-grid" id="recCalDaysGrid">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Time Slots Container -->
+          <div style="margin-top: 14px;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">اختر توقيت الجلسة (بتوقيت القاهرة) *</label>
+            <div class="slots-grid" id="recSlotsGrid">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <div class="selected-appointment-badge" id="recSelectedSlotBadge" style="display: none;">
+            <span>🗓️</span>
+            <span id="recSelectedSlotText">لم يتم تحديد موعد بعد</span>
           </div>
         </div>
+
+        <input type="hidden" id="recSelectedSlotDateTime" required>
+
         <div class="form-group">
           <label>ملاحظات إدارية (اختياري)</label>
           <input type="text" id="bookNotes" class="form-control" placeholder="ملاحظات الحضور أو الترتيبات الخاصة...">

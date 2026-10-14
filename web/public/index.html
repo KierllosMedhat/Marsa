@@ -253,13 +253,49 @@
             <option value="">جاري التحميل...</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>ملاحظة أو موعد مفضل (اختياري)</label>
-          <input type="text" id="bookNotes" class="form-control" placeholder="الفترة المسائية، أيام السبت...">
+
+        <!-- Interactive Calendar & Time Slots -->
+        <div class="calendar-picker-box">
+          <div class="calendar-header">
+            <span class="calendar-month-title" id="calMonthTitle">أكتوبر ٢٠٢٦</span>
+            <div style="display: flex; gap: 4px;">
+              <button type="button" class="btn-cal-nav" id="btnCalPrev">›</button>
+              <button type="button" class="btn-cal-nav" id="btnCalNext">‹</button>
+            </div>
+          </div>
+
+          <div class="calendar-weekdays">
+            <span>سبت</span><span>أحد</span><span>إثنين</span><span>ثلاثاء</span><span>أربعاء</span><span>خميس</span><span style="color:#EF4444;">جمعة</span>
+          </div>
+
+          <div class="calendar-days-grid" id="calDaysGrid">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Time Slots Container -->
+          <div style="margin-top: 14px;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">اختر توقيت الجلسة (بتوقيت القاهرة) *</label>
+            <div class="slots-grid" id="slotsGrid">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <div class="selected-appointment-badge" id="selectedSlotBadge" style="display: none;">
+            <span>🗓️</span>
+            <span id="selectedSlotText">لم يتم تحديد موعد بعد</span>
+          </div>
         </div>
+
+        <input type="hidden" id="selectedSlotDateTime" name="preferred_slot" required>
+
+        <div class="form-group">
+          <label>ملاحظات إضافية (اختياري)</label>
+          <input type="text" id="bookNotes" class="form-control" placeholder="أي تفاصيل ترغب في مشاركتها مسبقاً مع العيادة...">
+        </div>
+
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
           <button type="button" class="btn btn-outline" id="btnCancelBookingModal">إلغاء</button>
-          <button type="submit" class="btn btn-primary">إرسال طلب الحجز</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitBooking">تأكيد طلب الحجز</button>
         </div>
       </form>
     </div>
