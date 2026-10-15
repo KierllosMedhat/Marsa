@@ -42,18 +42,24 @@ async function loadTypes() {
     const res = await fetch(`${API_BASE}/appointments/types`);
     if (res.ok) {
       const types = await res.json();
-      bookTypeSelect.innerHTML = types.map(t => `
-        <option value="${t.type_id}">
-          ${t.name_ar} (${t.duration_minutes} دقيقة — ${t.price_egp} ج.م)
-        </option>
-      `).join('');
+      if (types && types.length > 0) {
+        bookTypeSelect.innerHTML = types.map(t => `
+          <option value="${t.type_id}">
+            ${t.name_ar} (${t.duration_minutes} دقيقة — ${t.price_egp} ج.م)
+          </option>
+        `).join('');
+        return;
+      }
     }
-  } catch (_) {
-    bookTypeSelect.innerHTML = `
-      <option value="default-1">كشف وتقييم نفسي أولي (60 دقيقة — 800 ج.م)</option>
-      <option value="default-2">جلسة علاج معرفي سلوكي CBT (45 دقيقة — 600 ج.م)</option>
-    `;
+  } catch (err) {
+    console.warn('Could not load types from server, using fallback types:', err);
   }
+  // Fallback with verified active database UUIDs
+  bookTypeSelect.innerHTML = `
+    <option value="41c617ef-a313-43f4-9812-b85c35f99bdf">كشف وتقييم نفسي أولي (60 دقيقة — 800 ج.م)</option>
+    <option value="b23192df-aeae-4a11-b3ce-be0c324ee592">جلسة علاج معرفي سلوكي CBT (45 دقيقة — 600 ج.م)</option>
+    <option value="f9a71352-7b90-4d61-bed6-f87bdbfbcfed">متابعة استشارية وتقييم دوائي (30 دقيقة — 500 ج.م)</option>
+  `;
 }
 
 function initBookingModal() {
@@ -70,6 +76,7 @@ function initBookingModal() {
 
   bookingForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btnSubmit = document.getElementById('btnSubmitBooking');
     const name = document.getElementById('bookName').value.trim();
     const phone = document.getElementById('bookPhone').value.trim();
     const email = document.getElementById('bookEmail').value.trim();
@@ -78,14 +85,26 @@ function initBookingModal() {
     const preferredSlot = document.getElementById('selectedSlotDateTime').value;
 
     if (!preferredSlot) {
-      alert('يرجى اختيار تاريخ ويوم وموعد الجلسة من التقويم قبل المتابعة.');
+      alert('يرجى اختيار يوم وموعد الجلسة من التقويم قبل تأكيد الطلب.');
       return;
     }
+
+    if (!name || !phone) {
+      alert('يرجى ملء الاسم ورقم الهاتف.');
+      return;
+    }
+
+    const originalBtnText = btnSubmit.textContent;
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'جاري إرسال طلب الحجز...';
 
     try {
       const res = await fetch(`${API_BASE}/appointments/booking-requests`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           name: name,
           phone: phone,
@@ -103,13 +122,21 @@ function initBookingModal() {
         document.getElementById('selectedSlotDateTime').value = '';
         selectedCalDate = null;
         selectedTimeSlot = null;
-        alert('شكراً لك! تم استلام طلب حجز الموعد بنجاح.\nسيتواصل معك فريق الاستقبال لتأكيد الموعد المختار في أقرب وقت.');
+        alert('شكراً لك! تم استلام طلب حجز الموعد بنجاح.\nسيتواصل معك فريق الاستقبال لتأكيد الموعد في أقرب وقت.');
       } else {
-        alert('حدث خطأ أثناء إرسال الطلب. يرجى مراجعة موظف الاستقبال هاتفياً.');
+        const errorData = await res.json().catch(() => ({}));
+        let msg = 'حدث خطأ أثناء إرسال الطلب.';
+        if (errorData.detail) {
+          msg += '\nالتفاصيل: ' + (typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail));
+        }
+        alert(msg);
       }
-    } catch (_) {
-      alert('تم استلام طلبك مبدئياً، وسيتواصل معك موظف الاستقبال لتأكيد الحجز.');
-      bookingModal.classList.remove('active');
+    } catch (err) {
+      console.error('Error submitting booking request:', err);
+      alert('تعذر الاتصال بخادم الحجوزات. يرجى التأكد من تشغيل السيرفر أو التواصل مباشرة عبر الواتساب.');
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = originalBtnText;
     }
   });
 }
@@ -222,6 +249,19 @@ function renderTimeSlots() {
     return;
   }
 
+  // Pre-select first slot if none selected yet
+  if (!selectedTimeSlot && CLINIC_SLOTS.length > 0) {
+    selectedTimeSlot = CLINIC_SLOTS[0].time24;
+    const y = selectedCalDate.getFullYear();
+    const m = String(selectedCalDate.getMonth() + 1).padStart(2, '0');
+    const d = String(selectedCalDate.getDate()).padStart(2, '0');
+    hiddenInput.value = `${y}-${m}-${d}T${selectedTimeSlot}:00+02:00`;
+    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const dateLabel = selectedCalDate.toLocaleDateString('ar-EG', dateOptions);
+    badgeText.textContent = `الموعد المختار: ${dateLabel} — الساعة ${CLINIC_SLOTS[0].label}`;
+    badge.style.display = 'flex';
+  }
+
   CLINIC_SLOTS.forEach(slot => {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -239,8 +279,8 @@ function renderTimeSlots() {
 
       // Construct ISO datetime string for Africa/Cairo (UTC+2)
       const y = selectedCalDate.getFullYear();
-      const m = String(selectedCalDate.getMonth() + 1).padLeft(2, '0');
-      const d = String(selectedCalDate.getDate()).padLeft(2, '0');
+      const m = String(selectedCalDate.getMonth() + 1).padStart(2, '0');
+      const d = String(selectedCalDate.getDate()).padStart(2, '0');
       const isoSlot = `${y}-${m}-${d}T${slot.time24}:00+02:00`;
       hiddenInput.value = isoSlot;
 

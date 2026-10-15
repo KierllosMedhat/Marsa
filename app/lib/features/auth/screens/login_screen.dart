@@ -12,7 +12,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController(text: 'doctor@marsa.clinic');
-  final _passwordController = TextEditingController();
+  final _passwordController = TextEditingController(text: 'DoctorPass123!');
   final _totpController = TextEditingController();
   bool _obscurePassword = true;
 
@@ -192,7 +192,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 onTap: () {
                                   setState(() {
                                     _emailController.text = 'doctor@marsa.clinic';
-                                    _passwordController.text = 'DoctorSecret123!';
+                                    _passwordController.text = 'DoctorPass123!';
                                   });
                                 },
                                 borderRadius: BorderRadius.circular(8),
@@ -236,7 +236,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 onTap: () {
                                   setState(() {
                                     _emailController.text = 'receptionist@marsa.clinic';
-                                    _passwordController.text = 'RecepSecret123!';
+                                    _passwordController.text = 'ReceptionPass123!';
                                   });
                                 },
                                 borderRadius: BorderRadius.circular(8),
