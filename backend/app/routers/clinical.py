@@ -33,6 +33,10 @@ from app.utils.encryption import decrypt_field, encrypt_field
 router = APIRouter(prefix="/clinical", tags=["Clinical Records"])
 
 
+@router.put(
+    "/patients/{patient_id}/clinical",
+    response_model=PatientClinicalResponse,
+)
 @router.post(
     "/patients/{patient_id}/clinical",
     response_model=PatientClinicalResponse,

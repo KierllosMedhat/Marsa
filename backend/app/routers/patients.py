@@ -254,6 +254,67 @@ async def get_patient_summary(
     return PatientSummaryResponse.model_validate(patient)
 
 
+@router.put("/{patient_id}", response_model=PatientDoctorResponse)
+@router.patch("/{patient_id}", response_model=PatientDoctorResponse)
+async def update_patient(
+    patient_id: uuid.UUID,
+    payload: PatientUpdate,
+    current_staff: Staff = Depends(require_role(StaffRole.doctor, StaffRole.admin, StaffRole.receptionist)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update patient demographic and contact information."""
+    stmt = (
+        select(Patient)
+        .where(Patient.patient_id == patient_id, Patient.deleted_at.is_(None))
+        .options(
+            selectinload(Patient.clinical_record),
+            selectinload(Patient.diagnoses),
+            selectinload(Patient.medications),
+        )
+    )
+    result = await db.execute(stmt)
+    patient = result.scalar_one_or_none()
+
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found",
+        )
+
+    if payload.name_ar is not None:
+        patient.name_ar = payload.name_ar
+    if payload.name_en is not None:
+        patient.name_en = payload.name_en
+    if payload.dob is not None:
+        patient.dob = payload.dob
+    if payload.sex is not None:
+        patient.sex = payload.sex
+    if payload.national_id is not None:
+        patient.national_id = encrypt_field(payload.national_id) if payload.national_id else None
+    if payload.phone is not None:
+        patient.phone = payload.phone
+    if payload.email is not None:
+        patient.email = payload.email
+    if payload.address is not None:
+        patient.address = payload.address
+    if payload.emergency_contact is not None:
+        patient.emergency_contact = payload.emergency_contact
+
+    patient.updated_at = utcnow()
+    await db.commit()
+    await db.refresh(patient)
+
+    await audit_service.log_event(
+        db=db,
+        action="update_patient",
+        resource_type="patient",
+        staff_id=current_staff.staff_id,
+        resource_id=patient.patient_id,
+    )
+
+    return build_doctor_patient_response(patient)
+
+
 @router.delete("/{patient_id}", status_code=status.HTTP_200_OK)
 async def soft_delete_patient(
     patient_id: uuid.UUID,

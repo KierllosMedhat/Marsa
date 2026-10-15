@@ -235,4 +235,229 @@ class PatientNotifier extends StateNotifier<PatientState> {
       return true;
     }
   }
+
+  Future<bool> updatePatientInfo(String patientId, Map<String, dynamic> body) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final res = await _apiClient.put('/patients/$patientId', body: body);
+
+    if (res.isSuccess && res.data != null) {
+      final updated = PatientModel.fromJson(res.data!);
+      state = state.copyWith(
+        isLoading: false,
+        selectedPatient: updated,
+      );
+      await searchPatients('');
+      return true;
+    } else {
+      // Local offline fallback
+      if (state.selectedPatient != null && state.selectedPatient!.patientId == patientId) {
+        final current = state.selectedPatient!;
+        final updated = PatientModel(
+          patientId: current.patientId,
+          mrn: current.mrn,
+          nameAr: body['name_ar'] ?? current.nameAr,
+          nameEn: body['name_en'] ?? current.nameEn,
+          phone: body['phone'] ?? current.phone,
+          email: body['email'] ?? current.email,
+          dob: body['dob'] != null ? DateTime.tryParse(body['dob']) : current.dob,
+          sex: body['sex'] ?? current.sex,
+          nationalId: body['national_id'] ?? current.nationalId,
+          address: body['address'] ?? current.address,
+          medicalHistory: current.medicalHistory,
+          psychiatricHistory: current.psychiatricHistory,
+          familyHistory: current.familyHistory,
+          socialHistory: current.socialHistory,
+          allergies: current.allergies,
+          diagnoses: current.diagnoses,
+          medications: current.medications,
+          sessionHistory: current.sessionHistory,
+        );
+        state = state.copyWith(isLoading: false, selectedPatient: updated);
+        return true;
+      }
+      state = state.copyWith(isLoading: false, errorMessage: res.errorMessage);
+      return false;
+    }
+  }
+
+  Future<bool> updateClinicalHistory(String patientId, {
+    String? medicalHistory,
+    String? psychiatricHistory,
+    String? familyHistory,
+    String? socialHistory,
+    List<String>? allergies,
+  }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final body = <String, dynamic>{};
+    if (medicalHistory != null) body['medical_history'] = medicalHistory;
+    if (psychiatricHistory != null) body['psychiatric_history'] = psychiatricHistory;
+    if (familyHistory != null) body['family_history'] = familyHistory;
+    if (socialHistory != null) body['social_history'] = socialHistory;
+    if (allergies != null) body['allergies'] = allergies;
+
+    final res = await _apiClient.post('/clinical/patients/$patientId/clinical', body: body);
+
+    if (res.isSuccess) {
+      await selectPatient(patientId);
+      return true;
+    } else {
+      // Local offline fallback
+      if (state.selectedPatient != null && state.selectedPatient!.patientId == patientId) {
+        final current = state.selectedPatient!;
+        final updated = PatientModel(
+          patientId: current.patientId,
+          mrn: current.mrn,
+          nameAr: current.nameAr,
+          nameEn: current.nameEn,
+          phone: current.phone,
+          email: current.email,
+          dob: current.dob,
+          sex: current.sex,
+          nationalId: current.nationalId,
+          address: current.address,
+          medicalHistory: medicalHistory ?? current.medicalHistory,
+          psychiatricHistory: psychiatricHistory ?? current.psychiatricHistory,
+          familyHistory: familyHistory ?? current.familyHistory,
+          socialHistory: socialHistory ?? current.socialHistory,
+          allergies: allergies ?? current.allergies,
+          diagnoses: current.diagnoses,
+          medications: current.medications,
+          sessionHistory: current.sessionHistory,
+        );
+        state = state.copyWith(isLoading: false, selectedPatient: updated);
+        return true;
+      }
+      state = state.copyWith(isLoading: false, errorMessage: res.errorMessage);
+      return false;
+    }
+  }
+
+  Future<bool> addDiagnosis(String patientId, {
+    required String descriptionAr,
+    String? descriptionEn,
+    String? icd10Code,
+    String status = 'active',
+  }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final body = {
+      'description_ar': descriptionAr.trim(),
+      if (descriptionEn != null) 'description_en': descriptionEn.trim(),
+      if (icd10Code != null) 'icd10_code': icd10Code.trim(),
+      'status': status,
+      'date_diagnosed': DateTime.now().toIso8601String().substring(0, 10),
+    };
+
+    final res = await _apiClient.post('/clinical/patients/$patientId/diagnoses', body: body);
+
+    if (res.isSuccess) {
+      await selectPatient(patientId);
+      return true;
+    } else {
+      // Offline fallback
+      if (state.selectedPatient != null && state.selectedPatient!.patientId == patientId) {
+        final current = state.selectedPatient!;
+        final newDiag = DiagnosisItem(
+          diagnosisId: 'diag-local-${DateTime.now().millisecondsSinceEpoch}',
+          descriptionAr: descriptionAr,
+          descriptionEn: descriptionEn,
+          icd10Code: icd10Code,
+          dateDiagnosed: DateTime.now(),
+          status: status,
+        );
+        final updated = PatientModel(
+          patientId: current.patientId,
+          mrn: current.mrn,
+          nameAr: current.nameAr,
+          nameEn: current.nameEn,
+          phone: current.phone,
+          email: current.email,
+          dob: current.dob,
+          sex: current.sex,
+          nationalId: current.nationalId,
+          address: current.address,
+          medicalHistory: current.medicalHistory,
+          psychiatricHistory: current.psychiatricHistory,
+          familyHistory: current.familyHistory,
+          socialHistory: current.socialHistory,
+          allergies: current.allergies,
+          diagnoses: [newDiag, ...current.diagnoses],
+          medications: current.medications,
+          sessionHistory: current.sessionHistory,
+        );
+        state = state.copyWith(isLoading: false, selectedPatient: updated);
+        return true;
+      }
+      state = state.copyWith(isLoading: false, errorMessage: res.errorMessage);
+      return false;
+    }
+  }
+
+  Future<bool> addMedication(String patientId, {
+    required String nameAr,
+    String? nameEn,
+    String? dose,
+    String? frequency,
+    String? route,
+    String? notes,
+  }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final body = {
+      'name_ar': nameAr.trim(),
+      if (nameEn != null) 'name_en': nameEn.trim(),
+      if (dose != null) 'dose': dose.trim(),
+      if (frequency != null) 'frequency': frequency.trim(),
+      if (route != null) 'route': route.trim(),
+      if (notes != null) 'notes': notes.trim(),
+    };
+
+    final res = await _apiClient.post('/clinical/patients/$patientId/medications', body: body);
+
+    if (res.isSuccess) {
+      await selectPatient(patientId);
+      return true;
+    } else {
+      // Offline fallback
+      if (state.selectedPatient != null && state.selectedPatient!.patientId == patientId) {
+        final current = state.selectedPatient!;
+        final newMed = MedicationItem(
+          medicationId: 'med-local-${DateTime.now().millisecondsSinceEpoch}',
+          nameAr: nameAr,
+          nameEn: nameEn,
+          dose: dose,
+          frequency: frequency,
+          route: route,
+          notes: notes,
+          isActive: true,
+        );
+        final updated = PatientModel(
+          patientId: current.patientId,
+          mrn: current.mrn,
+          nameAr: current.nameAr,
+          nameEn: current.nameEn,
+          phone: current.phone,
+          email: current.email,
+          dob: current.dob,
+          sex: current.sex,
+          nationalId: current.nationalId,
+          address: current.address,
+          medicalHistory: current.medicalHistory,
+          psychiatricHistory: current.psychiatricHistory,
+          familyHistory: current.familyHistory,
+          socialHistory: current.socialHistory,
+          allergies: current.allergies,
+          diagnoses: current.diagnoses,
+          medications: [newMed, ...current.medications],
+          sessionHistory: current.sessionHistory,
+        );
+        state = state.copyWith(isLoading: false, selectedPatient: updated);
+        return true;
+      }
+      state = state.copyWith(isLoading: false, errorMessage: res.errorMessage);
+      return false;
+    }
+  }
 }

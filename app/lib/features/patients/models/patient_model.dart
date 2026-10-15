@@ -150,7 +150,7 @@ class PatientModel {
   });
 
   factory PatientModel.fromJson(Map<String, dynamic> json) {
-    final clinical = json['clinical'] as Map<String, dynamic>?;
+    final clinical = (json['clinical_record'] ?? json['clinical']) as Map<String, dynamic>?;
 
     return PatientModel(
       patientId: json['patient_id'] ?? '',
