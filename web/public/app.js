@@ -185,6 +185,18 @@ function renderCalendar() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Pre-select earliest available non-Friday date
+  if (!selectedCalDate) {
+    for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
+      const candidate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + dayOffset);
+      const isCandidateFriday = (candidate.getDay() + 1) % 7 === 6;
+      if (!isCandidateFriday) {
+        selectedCalDate = candidate;
+        break;
+      }
+    }
+  }
+
   // Render day cells
   for (let d = 1; d <= totalDays; d++) {
     const cellDate = new Date(year, month, d);
@@ -220,15 +232,6 @@ function renderCalendar() {
     }
 
     daysGrid.appendChild(cell);
-  }
-
-  // If no date selected yet, pick today or next available weekday
-  if (!selectedCalDate) {
-    const initialDay = today.getMonth() === month ? today.getDate() : 1;
-    const testDate = new Date(year, month, initialDay);
-    if ((testDate.getDay() + 1) % 7 !== 6 && testDate >= today) {
-      selectedCalDate = testDate;
-    }
   }
 
   renderTimeSlots();
