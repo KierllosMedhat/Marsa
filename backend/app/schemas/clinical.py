@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date as DateType, datetime
 import uuid
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,6 +10,13 @@ class PatientClinicalUpdate(BaseModel):
     psychiatric_history: str | None = None
     family_history: str | None = None
     social_history: str | None = None
+    history: str | None = None
+    psychiatric_examinations: str | None = None
+    physical_neurological_exam: str | None = None
+    risk_assessment: str | None = None
+    suicide_attempts: str | None = None
+    admitted_before: str | None = None
+    notes: str | None = None
     allergies: list | dict | None = None
 
 
@@ -19,6 +26,13 @@ class PatientClinicalResponse(BaseModel):
     psychiatric_history: str | None = None
     family_history: str | None = None
     social_history: str | None = None
+    history: str | None = None
+    psychiatric_examinations: str | None = None
+    physical_neurological_exam: str | None = None
+    risk_assessment: str | None = None
+    suicide_attempts: str | None = None
+    admitted_before: str | None = None
+    notes: str | None = None
     allergies: list | dict | None = None
     updated_at: datetime
     updated_by: uuid.UUID
@@ -30,7 +44,7 @@ class DiagnosisCreate(BaseModel):
     icd10_code: str | None = None
     description_ar: str = Field(..., description="Arabic diagnosis description")
     description_en: str | None = None
-    date_diagnosed: date
+    date_diagnosed: DateType
     status: DiagnosisStatus = DiagnosisStatus.active
 
 
@@ -38,7 +52,7 @@ class DiagnosisUpdate(BaseModel):
     icd10_code: str | None = None
     description_ar: str | None = None
     description_en: str | None = None
-    date_diagnosed: date | None = None
+    date_diagnosed: DateType | None = None
     status: DiagnosisStatus | None = None
     finalized_at: datetime | None = None
 
@@ -49,7 +63,7 @@ class DiagnosisResponse(BaseModel):
     icd10_code: str | None = None
     description_ar: str
     description_en: str | None = None
-    date_diagnosed: date
+    date_diagnosed: DateType
     status: DiagnosisStatus
     author_id: uuid.UUID
     created_at: datetime
@@ -64,8 +78,10 @@ class MedicationCreate(BaseModel):
     dose: str | None = None
     frequency: str | None = None
     route: str | None = None
-    start_date: date | None = None
-    end_date: date | None = None
+    duration: str | None = None
+    date: DateType | None = None
+    start_date: DateType | None = None
+    end_date: DateType | None = None
     notes: str | None = None
     is_active: bool = True
 
@@ -76,8 +92,10 @@ class MedicationUpdate(BaseModel):
     dose: str | None = None
     frequency: str | None = None
     route: str | None = None
-    start_date: date | None = None
-    end_date: date | None = None
+    duration: str | None = None
+    date: DateType | None = None
+    start_date: DateType | None = None
+    end_date: DateType | None = None
     notes: str | None = None
     is_active: bool | None = None
 
@@ -90,8 +108,10 @@ class MedicationResponse(BaseModel):
     dose: str | None = None
     frequency: str | None = None
     route: str | None = None
-    start_date: date | None = None
-    end_date: date | None = None
+    duration: str | None = None
+    date: DateType | None = None
+    start_date: DateType | None = None
+    end_date: DateType | None = None
     notes: str | None = None
     prescribed_by: uuid.UUID
     is_active: bool
@@ -106,6 +126,35 @@ class SessionCreate(BaseModel):
     started_at: datetime
     ended_at: datetime | None = None
     status: SessionStatus = SessionStatus.draft
+    session_number: str | None = None
+    chief_complaint: str | None = None
+    sleep: str | None = None
+    appetite: str | None = None
+    mood: str | None = None
+    anxiety: str | None = None
+    suicidal_self_harm_assessment: str | None = None
+    substance_use: str | None = None
+    mental_status_examination: str | None = None
+    diagnosis: str | None = None
+    treatment_plan: str | None = None
+    follow_up: str | None = None
+
+
+class SessionUpdate(BaseModel):
+    ended_at: datetime | None = None
+    status: SessionStatus | None = None
+    session_number: str | None = None
+    chief_complaint: str | None = None
+    sleep: str | None = None
+    appetite: str | None = None
+    mood: str | None = None
+    anxiety: str | None = None
+    suicidal_self_harm_assessment: str | None = None
+    substance_use: str | None = None
+    mental_status_examination: str | None = None
+    diagnosis: str | None = None
+    treatment_plan: str | None = None
+    follow_up: str | None = None
 
 
 class SessionResponse(BaseModel):
@@ -115,6 +164,18 @@ class SessionResponse(BaseModel):
     started_at: datetime
     ended_at: datetime | None = None
     status: SessionStatus
+    session_number: str | None = None
+    chief_complaint: str | None = None
+    sleep: str | None = None
+    appetite: str | None = None
+    mood: str | None = None
+    anxiety: str | None = None
+    suicidal_self_harm_assessment: str | None = None
+    substance_use: str | None = None
+    mental_status_examination: str | None = None
+    diagnosis: str | None = None
+    treatment_plan: str | None = None
+    follow_up: str | None = None
     created_by: uuid.UUID
     finalized_by: uuid.UUID | None = None
     finalized_at: datetime | None = None
@@ -142,5 +203,41 @@ class SessionNoteResponse(BaseModel):
     amended_from: uuid.UUID | None = None
     edited_at: datetime
     edited_by: uuid.UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PatientFileCreate(BaseModel):
+    file_name: str
+    file_type: str
+    file_location: str
+
+
+class PatientFileResponse(BaseModel):
+    file_id: uuid.UUID
+    patient_id: uuid.UUID
+    file_name: str
+    file_type: str
+    file_location: str
+    created_at: datetime
+    uploaded_by: uuid.UUID | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PatientNoteCreate(BaseModel):
+    note_text: str
+
+
+class PatientNoteUpdate(BaseModel):
+    note_text: str
+
+
+class PatientNoteResponse(BaseModel):
+    note_id: uuid.UUID
+    patient_id: uuid.UUID
+    note_text: str
+    last_modified: datetime
+    author_id: uuid.UUID | None = None
 
     model_config = ConfigDict(from_attributes=True)

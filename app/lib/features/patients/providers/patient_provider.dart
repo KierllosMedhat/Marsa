@@ -264,14 +264,28 @@ class PatientNotifier extends StateNotifier<PatientState> {
           sex: body['sex'] ?? current.sex,
           nationalId: body['national_id'] ?? current.nationalId,
           address: body['address'] ?? current.address,
+          occupation: body['occupation'] ?? current.occupation,
+          maritalStatus: body['marital_status'] ?? current.maritalStatus,
+          children: body['children'] ?? current.children,
+          firstSessionDate: body['first_session_date'] != null ? DateTime.tryParse(body['first_session_date']) : current.firstSessionDate,
+          lastSessionDate: body['last_session_date'] != null ? DateTime.tryParse(body['last_session_date']) : current.lastSessionDate,
           medicalHistory: current.medicalHistory,
           psychiatricHistory: current.psychiatricHistory,
           familyHistory: current.familyHistory,
           socialHistory: current.socialHistory,
+          history: current.history,
+          psychiatricExaminations: current.psychiatricExaminations,
+          physicalNeurologicalExam: current.physicalNeurologicalExam,
+          riskAssessment: current.riskAssessment,
+          suicideAttempts: current.suicideAttempts,
+          admittedBefore: current.admittedBefore,
+          notes: current.notes,
           allergies: current.allergies,
           diagnoses: current.diagnoses,
           medications: current.medications,
           sessionHistory: current.sessionHistory,
+          files: current.files,
+          quickNotes: current.quickNotes,
         );
         state = state.copyWith(isLoading: false, selectedPatient: updated);
         return true;
@@ -286,6 +300,13 @@ class PatientNotifier extends StateNotifier<PatientState> {
     String? psychiatricHistory,
     String? familyHistory,
     String? socialHistory,
+    String? history,
+    String? psychiatricExaminations,
+    String? physicalNeurologicalExam,
+    String? riskAssessment,
+    String? suicideAttempts,
+    String? admittedBefore,
+    String? notes,
     List<String>? allergies,
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
@@ -295,6 +316,13 @@ class PatientNotifier extends StateNotifier<PatientState> {
     if (psychiatricHistory != null) body['psychiatric_history'] = psychiatricHistory;
     if (familyHistory != null) body['family_history'] = familyHistory;
     if (socialHistory != null) body['social_history'] = socialHistory;
+    if (history != null) body['history'] = history;
+    if (psychiatricExaminations != null) body['psychiatric_examinations'] = psychiatricExaminations;
+    if (physicalNeurologicalExam != null) body['physical_neurological_exam'] = physicalNeurologicalExam;
+    if (riskAssessment != null) body['risk_assessment'] = riskAssessment;
+    if (suicideAttempts != null) body['suicide_attempts'] = suicideAttempts;
+    if (admittedBefore != null) body['admitted_before'] = admittedBefore;
+    if (notes != null) body['notes'] = notes;
     if (allergies != null) body['allergies'] = allergies;
 
     final res = await _apiClient.post('/clinical/patients/$patientId/clinical', body: body);
@@ -317,14 +345,28 @@ class PatientNotifier extends StateNotifier<PatientState> {
           sex: current.sex,
           nationalId: current.nationalId,
           address: current.address,
+          occupation: current.occupation,
+          maritalStatus: current.maritalStatus,
+          children: current.children,
+          firstSessionDate: current.firstSessionDate,
+          lastSessionDate: current.lastSessionDate,
           medicalHistory: medicalHistory ?? current.medicalHistory,
           psychiatricHistory: psychiatricHistory ?? current.psychiatricHistory,
           familyHistory: familyHistory ?? current.familyHistory,
           socialHistory: socialHistory ?? current.socialHistory,
+          history: history ?? current.history,
+          psychiatricExaminations: psychiatricExaminations ?? current.psychiatricExaminations,
+          physicalNeurologicalExam: physicalNeurologicalExam ?? current.physicalNeurologicalExam,
+          riskAssessment: riskAssessment ?? current.riskAssessment,
+          suicideAttempts: suicideAttempts ?? current.suicideAttempts,
+          admittedBefore: admittedBefore ?? current.admittedBefore,
+          notes: notes ?? current.notes,
           allergies: allergies ?? current.allergies,
           diagnoses: current.diagnoses,
           medications: current.medications,
           sessionHistory: current.sessionHistory,
+          files: current.files,
+          quickNotes: current.quickNotes,
         );
         state = state.copyWith(isLoading: false, selectedPatient: updated);
         return true;
@@ -378,14 +420,28 @@ class PatientNotifier extends StateNotifier<PatientState> {
           sex: current.sex,
           nationalId: current.nationalId,
           address: current.address,
+          occupation: current.occupation,
+          maritalStatus: current.maritalStatus,
+          children: current.children,
+          firstSessionDate: current.firstSessionDate,
+          lastSessionDate: current.lastSessionDate,
           medicalHistory: current.medicalHistory,
           psychiatricHistory: current.psychiatricHistory,
           familyHistory: current.familyHistory,
           socialHistory: current.socialHistory,
+          history: current.history,
+          psychiatricExaminations: current.psychiatricExaminations,
+          physicalNeurologicalExam: current.physicalNeurologicalExam,
+          riskAssessment: current.riskAssessment,
+          suicideAttempts: current.suicideAttempts,
+          admittedBefore: current.admittedBefore,
+          notes: current.notes,
           allergies: current.allergies,
           diagnoses: [newDiag, ...current.diagnoses],
           medications: current.medications,
           sessionHistory: current.sessionHistory,
+          files: current.files,
+          quickNotes: current.quickNotes,
         );
         state = state.copyWith(isLoading: false, selectedPatient: updated);
         return true;
@@ -401,6 +457,8 @@ class PatientNotifier extends StateNotifier<PatientState> {
     String? dose,
     String? frequency,
     String? route,
+    String? duration,
+    DateTime? date,
     String? notes,
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
@@ -411,6 +469,8 @@ class PatientNotifier extends StateNotifier<PatientState> {
       if (dose != null) 'dose': dose.trim(),
       if (frequency != null) 'frequency': frequency.trim(),
       if (route != null) 'route': route.trim(),
+      if (duration != null) 'duration': duration.trim(),
+      if (date != null) 'date': date.toIso8601String().substring(0, 10),
       if (notes != null) 'notes': notes.trim(),
     };
 
@@ -430,6 +490,8 @@ class PatientNotifier extends StateNotifier<PatientState> {
           dose: dose,
           frequency: frequency,
           route: route,
+          duration: duration,
+          date: date ?? DateTime.now(),
           notes: notes,
           isActive: true,
         );
@@ -444,14 +506,212 @@ class PatientNotifier extends StateNotifier<PatientState> {
           sex: current.sex,
           nationalId: current.nationalId,
           address: current.address,
+          occupation: current.occupation,
+          maritalStatus: current.maritalStatus,
+          children: current.children,
+          firstSessionDate: current.firstSessionDate,
+          lastSessionDate: current.lastSessionDate,
           medicalHistory: current.medicalHistory,
           psychiatricHistory: current.psychiatricHistory,
           familyHistory: current.familyHistory,
           socialHistory: current.socialHistory,
+          history: current.history,
+          psychiatricExaminations: current.psychiatricExaminations,
+          physicalNeurologicalExam: current.physicalNeurologicalExam,
+          riskAssessment: current.riskAssessment,
+          suicideAttempts: current.suicideAttempts,
+          admittedBefore: current.admittedBefore,
+          notes: current.notes,
           allergies: current.allergies,
           diagnoses: current.diagnoses,
           medications: [newMed, ...current.medications],
           sessionHistory: current.sessionHistory,
+          files: current.files,
+          quickNotes: current.quickNotes,
+        );
+        state = state.copyWith(isLoading: false, selectedPatient: updated);
+        return true;
+      }
+      state = state.copyWith(isLoading: false, errorMessage: res.errorMessage);
+      return false;
+    }
+  }
+
+  Future<bool> addPatientFile(String patientId, {
+    required String fileName,
+    required String fileType,
+    required String fileLocation,
+  }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final body = {
+      'file_name': fileName.trim(),
+      'file_type': fileType.trim(),
+      'file_location': fileLocation.trim(),
+    };
+
+    final res = await _apiClient.post('/clinical/patients/$patientId/files', body: body);
+
+    if (res.isSuccess) {
+      await selectPatient(patientId);
+      return true;
+    } else {
+      // Offline fallback
+      if (state.selectedPatient != null && state.selectedPatient!.patientId == patientId) {
+        final current = state.selectedPatient!;
+        final newFile = PatientFileItem(
+          fileId: 'file-local-${DateTime.now().millisecondsSinceEpoch}',
+          fileName: fileName,
+          fileType: fileType,
+          fileLocation: fileLocation,
+          createdAt: DateTime.now(),
+        );
+        final updated = PatientModel(
+          patientId: current.patientId,
+          mrn: current.mrn,
+          nameAr: current.nameAr,
+          nameEn: current.nameEn,
+          phone: current.phone,
+          email: current.email,
+          dob: current.dob,
+          sex: current.sex,
+          nationalId: current.nationalId,
+          address: current.address,
+          occupation: current.occupation,
+          maritalStatus: current.maritalStatus,
+          children: current.children,
+          firstSessionDate: current.firstSessionDate,
+          lastSessionDate: current.lastSessionDate,
+          medicalHistory: current.medicalHistory,
+          psychiatricHistory: current.psychiatricHistory,
+          familyHistory: current.familyHistory,
+          socialHistory: current.socialHistory,
+          history: current.history,
+          psychiatricExaminations: current.psychiatricExaminations,
+          physicalNeurologicalExam: current.physicalNeurologicalExam,
+          riskAssessment: current.riskAssessment,
+          suicideAttempts: current.suicideAttempts,
+          admittedBefore: current.admittedBefore,
+          notes: current.notes,
+          allergies: current.allergies,
+          diagnoses: current.diagnoses,
+          medications: current.medications,
+          sessionHistory: current.sessionHistory,
+          files: [newFile, ...current.files],
+          quickNotes: current.quickNotes,
+        );
+        state = state.copyWith(isLoading: false, selectedPatient: updated);
+        return true;
+      }
+      state = state.copyWith(isLoading: false, errorMessage: res.errorMessage);
+      return false;
+    }
+  }
+
+  Future<bool> addPatientNote(String patientId, {required String noteText}) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final body = {'note_text': noteText.trim()};
+    final res = await _apiClient.post('/clinical/patients/$patientId/notes', body: body);
+
+    if (res.isSuccess) {
+      await selectPatient(patientId);
+      return true;
+    } else {
+      // Offline fallback
+      if (state.selectedPatient != null && state.selectedPatient!.patientId == patientId) {
+        final current = state.selectedPatient!;
+        final newNote = PatientNoteItem(
+          noteId: 'note-local-${DateTime.now().millisecondsSinceEpoch}',
+          noteText: noteText,
+          lastModified: DateTime.now(),
+        );
+        final updated = PatientModel(
+          patientId: current.patientId,
+          mrn: current.mrn,
+          nameAr: current.nameAr,
+          nameEn: current.nameEn,
+          phone: current.phone,
+          email: current.email,
+          dob: current.dob,
+          sex: current.sex,
+          nationalId: current.nationalId,
+          address: current.address,
+          occupation: current.occupation,
+          maritalStatus: current.maritalStatus,
+          children: current.children,
+          firstSessionDate: current.firstSessionDate,
+          lastSessionDate: current.lastSessionDate,
+          medicalHistory: current.medicalHistory,
+          psychiatricHistory: current.psychiatricHistory,
+          familyHistory: current.familyHistory,
+          socialHistory: current.socialHistory,
+          history: current.history,
+          psychiatricExaminations: current.psychiatricExaminations,
+          physicalNeurologicalExam: current.physicalNeurologicalExam,
+          riskAssessment: current.riskAssessment,
+          suicideAttempts: current.suicideAttempts,
+          admittedBefore: current.admittedBefore,
+          notes: current.notes,
+          allergies: current.allergies,
+          diagnoses: current.diagnoses,
+          medications: current.medications,
+          sessionHistory: current.sessionHistory,
+          files: current.files,
+          quickNotes: [newNote, ...current.quickNotes],
+        );
+        state = state.copyWith(isLoading: false, selectedPatient: updated);
+        return true;
+      }
+      state = state.copyWith(isLoading: false, errorMessage: res.errorMessage);
+      return false;
+    }
+  }
+
+  Future<bool> deletePatientNote(String patientId, String noteId) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    final res = await _apiClient.delete('/clinical/patients/$patientId/notes/$noteId');
+
+    if (res.isSuccess) {
+      await selectPatient(patientId);
+      return true;
+    } else {
+      if (state.selectedPatient != null && state.selectedPatient!.patientId == patientId) {
+        final current = state.selectedPatient!;
+        final updatedNotes = current.quickNotes.where((n) => n.noteId != noteId).toList();
+        final updated = PatientModel(
+          patientId: current.patientId,
+          mrn: current.mrn,
+          nameAr: current.nameAr,
+          nameEn: current.nameEn,
+          phone: current.phone,
+          email: current.email,
+          dob: current.dob,
+          sex: current.sex,
+          nationalId: current.nationalId,
+          address: current.address,
+          occupation: current.occupation,
+          maritalStatus: current.maritalStatus,
+          children: current.children,
+          firstSessionDate: current.firstSessionDate,
+          lastSessionDate: current.lastSessionDate,
+          medicalHistory: current.medicalHistory,
+          psychiatricHistory: current.psychiatricHistory,
+          familyHistory: current.familyHistory,
+          socialHistory: current.socialHistory,
+          history: current.history,
+          psychiatricExaminations: current.psychiatricExaminations,
+          physicalNeurologicalExam: current.physicalNeurologicalExam,
+          riskAssessment: current.riskAssessment,
+          suicideAttempts: current.suicideAttempts,
+          admittedBefore: current.admittedBefore,
+          notes: current.notes,
+          allergies: current.allergies,
+          diagnoses: current.diagnoses,
+          medications: current.medications,
+          sessionHistory: current.sessionHistory,
+          files: current.files,
+          quickNotes: updatedNotes,
         );
         state = state.copyWith(isLoading: false, selectedPatient: updated);
         return true;

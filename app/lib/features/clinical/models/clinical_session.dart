@@ -3,12 +3,14 @@ class PrescriptionDraft {
   final String dose;
   final String frequency;
   final String? instructions;
+  final String? duration;
 
   PrescriptionDraft({
     required this.medicationName,
     required this.dose,
     required this.frequency,
     this.instructions,
+    this.duration,
   });
 
   Map<String, dynamic> toJson() => {
@@ -16,6 +18,7 @@ class PrescriptionDraft {
     'dose': dose,
     'frequency': frequency,
     'instructions': instructions,
+    'duration': duration,
   };
 
   factory PrescriptionDraft.fromJson(Map<String, dynamic> json) => PrescriptionDraft(
@@ -23,6 +26,7 @@ class PrescriptionDraft {
     dose: json['dose'] ?? '',
     frequency: json['frequency'] ?? '',
     instructions: json['instructions'],
+    duration: json['duration'],
   );
 }
 
@@ -35,10 +39,19 @@ class ClinicalSession {
   DateTime? finalizedAt;
   String status; // 'draft', 'finalized'
   
-  // Clinical notes
+  // Psychiatric Assessment Fields from Clinic ER Schema
+  String? sessionNumber;
   String chiefComplaint;
+  String sleep;
+  String appetite;
+  String mood;
+  String anxiety;
+  String suicidalSelfHarmAssessment;
+  String substanceUse;
   String mentalStatusExam;
-  String assessmentAndPlan;
+  String diagnosis;
+  String treatmentPlan;
+  String followUp;
   String generalNotesTyped;
   String? inkStrokeJson; // serialized M-Pencil handwriting strokes
 
@@ -54,9 +67,18 @@ class ClinicalSession {
     required this.startedAt,
     this.finalizedAt,
     this.status = 'draft',
+    this.sessionNumber,
     this.chiefComplaint = '',
+    this.sleep = '',
+    this.appetite = '',
+    this.mood = '',
+    this.anxiety = '',
+    this.suicidalSelfHarmAssessment = '',
+    this.substanceUse = '',
     this.mentalStatusExam = '',
-    this.assessmentAndPlan = '',
+    this.diagnosis = '',
+    this.treatmentPlan = '',
+    this.followUp = '',
     this.generalNotesTyped = '',
     this.inkStrokeJson,
     List<String>? activeDiagnoses,
@@ -76,9 +98,18 @@ class ClinicalSession {
       'started_at': startedAt.toIso8601String(),
       'finalized_at': finalizedAt?.toIso8601String(),
       'status': status,
+      'session_number': sessionNumber,
       'chief_complaint': chiefComplaint,
-      'mental_status_exam': mentalStatusExam,
-      'assessment_and_plan': assessmentAndPlan,
+      'sleep': sleep,
+      'appetite': appetite,
+      'mood': mood,
+      'anxiety': anxiety,
+      'suicidal_self_harm_assessment': suicidalSelfHarmAssessment,
+      'substance_use': substanceUse,
+      'mental_status_examination': mentalStatusExam,
+      'diagnosis': diagnosis,
+      'treatment_plan': treatmentPlan,
+      'follow_up': followUp,
       'general_notes_typed': generalNotesTyped,
       'ink_stroke_json': inkStrokeJson,
       'active_diagnoses': activeDiagnoses,
@@ -95,9 +126,18 @@ class ClinicalSession {
       startedAt: DateTime.tryParse(json['started_at'] ?? '') ?? DateTime.now(),
       finalizedAt: json['finalized_at'] != null ? DateTime.tryParse(json['finalized_at']) : null,
       status: json['status'] ?? 'draft',
+      sessionNumber: json['session_number'],
       chiefComplaint: json['chief_complaint'] ?? '',
-      mentalStatusExam: json['mental_status_exam'] ?? '',
-      assessmentAndPlan: json['assessment_and_plan'] ?? '',
+      sleep: json['sleep'] ?? '',
+      appetite: json['appetite'] ?? '',
+      mood: json['mood'] ?? '',
+      anxiety: json['anxiety'] ?? '',
+      suicidalSelfHarmAssessment: json['suicidal_self_harm_assessment'] ?? '',
+      substanceUse: json['substance_use'] ?? '',
+      mentalStatusExam: json['mental_status_examination'] ?? json['mental_status_exam'] ?? '',
+      diagnosis: json['diagnosis'] ?? '',
+      treatmentPlan: json['treatment_plan'] ?? json['assessment_and_plan'] ?? '',
+      followUp: json['follow_up'] ?? '',
       generalNotesTyped: json['general_notes_typed'] ?? '',
       inkStrokeJson: json['ink_stroke_json'],
       activeDiagnoses: List<String>.from(json['active_diagnoses'] ?? []),

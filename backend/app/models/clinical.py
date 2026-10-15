@@ -1,6 +1,6 @@
 import enum
 import uuid
-from datetime import date, datetime
+from datetime import date as DateType, datetime
 from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text, Uuid, JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -56,6 +56,41 @@ class PatientClinical(Base):
         nullable=True,
         comment="Encrypted social history / التاريخ الاجتماعي مشفر",
     )
+    history: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted complete psychiatric history / التاريخ المرضي والنفسي الكامل مشفر",
+    )
+    psychiatric_examinations: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted psychiatric examinations / الفحوصات والتقييمات النفسية مشفر",
+    )
+    physical_neurological_exam: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted physical and neurological exam / الفحص الجسدي والعصبي مشفر",
+    )
+    risk_assessment: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted risk assessment / تقييم الخطورة مشفر",
+    )
+    suicide_attempts: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted suicide attempts history / محاولات الانتحار السابقة مشفر",
+    )
+    admitted_before: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted past hospital admissions / دخول مستشفى سابق مشفر",
+    )
+    notes: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted general doctor notes / ملاحظات الطبيب العامة مشفر",
+    )
     allergies: Mapped[list | dict | None] = mapped_column(
         JSON().with_variant(JSONB, "postgresql"),
         nullable=True,
@@ -109,7 +144,7 @@ class Diagnosis(Base):
         nullable=True,
         comment="English diagnosis description / وصف التشخيص بالإنجليزية",
     )
-    date_diagnosed: Mapped[date] = mapped_column(
+    date_diagnosed: Mapped[DateType] = mapped_column(
         Date,
         nullable=False,
         comment="Date diagnosis was made / تاريخ التشخيص",
@@ -180,11 +215,21 @@ class Medication(Base):
         nullable=True,
         comment="Route (e.g. oral) / طريقة التناول",
     )
-    start_date: Mapped[date | None] = mapped_column(
+    duration: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Treatment duration (e.g. 3 months) / مدة العلاج",
+    )
+    date: Mapped[DateType | None] = mapped_column(
+        Date,
+        nullable=True,
+        comment="Prescription date / تاريخ الوصفة",
+    )
+    start_date: Mapped[DateType | None] = mapped_column(
         Date,
         nullable=True,
     )
-    end_date: Mapped[date | None] = mapped_column(
+    end_date: Mapped[DateType | None] = mapped_column(
         Date,
         nullable=True,
     )
@@ -247,6 +292,66 @@ class Session(Base):
         Enum(SessionStatus, name="session_status_enum", native_enum=False),
         nullable=False,
         default=SessionStatus.draft,
+    )
+    session_number: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Session number or label / رقم الجلسة",
+    )
+    chief_complaint: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Chief complaint / الشكوى الرئيسية",
+    )
+    sleep: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Sleep patterns and quality / النوم",
+    )
+    appetite: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Appetite / الشهية",
+    )
+    mood: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Subjective and objective mood / المزاج",
+    )
+    anxiety: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Anxiety level and symptoms / القلق والتوتر",
+    )
+    suicidal_self_harm_assessment: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Suicidal and self-harm assessment / تقييم الانتحار وإيذاء النفس",
+    )
+    substance_use: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Substance and alcohol use history / تعاطي المواد المخدرة",
+    )
+    mental_status_examination: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Mental Status Examination (MSE) / فحص الحالة العقلية",
+    )
+    diagnosis: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Session provisional or confirmed diagnosis / تشخيص الجلسة",
+    )
+    treatment_plan: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Treatment and psychotherapy plan / الخطة العلاجية",
+    )
+    follow_up: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Follow-up interval and recommendations / توصيات المتابعة",
     )
     created_by: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -343,3 +448,88 @@ class SessionNote(Base):
     session = relationship("Session", back_populates="notes")
     editor = relationship("Staff", foreign_keys=[edited_by])
     previous_note = relationship("SessionNote", remote_side=[note_id])
+
+
+class PatientFile(Base):
+    """Clinical files, scans, reports, labs for a patient."""
+
+    __tablename__ = "patient_files"
+
+    file_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("patients.patient_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    file_name: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        comment="File name or report title / اسم الملف أو التقرير",
+    )
+    file_type: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        comment="File MIME or category (report, lab, scan) / نوع الملف",
+    )
+    file_location: Mapped[str] = mapped_column(
+        String(500),
+        nullable=False,
+        comment="Storage path or URI / مسار الملف",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        nullable=False,
+    )
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("staff.staff_id"),
+        nullable=True,
+    )
+
+    # Relationships
+    patient = relationship("Patient", back_populates="files")
+    uploader = relationship("Staff", foreign_keys=[uploaded_by])
+
+
+class PatientNote(Base):
+    """Doctor quick notes on patient profile."""
+
+    __tablename__ = "patient_notes"
+
+    note_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("patients.patient_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    note_text: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        comment="Note content / نص الملاحظة",
+    )
+    last_modified: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+        nullable=False,
+    )
+    author_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("staff.staff_id"),
+        nullable=True,
+    )
+
+    # Relationships
+    patient = relationship("Patient", back_populates="notes")
+    author = relationship("Staff", foreign_keys=[author_id])

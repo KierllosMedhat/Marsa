@@ -20,14 +20,22 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
 
   // Controllers for typed notes
   late TextEditingController _complaintController;
+  late TextEditingController _sleepController;
+  late TextEditingController _appetiteController;
+  late TextEditingController _moodController;
+  late TextEditingController _anxietyController;
+  late TextEditingController _suicideController;
+  late TextEditingController _substanceController;
   late TextEditingController _mseController;
   late TextEditingController _planController;
+  late TextEditingController _followUpController;
   late TextEditingController _generalNotesController;
 
   // Prescription dialog inputs
   final _medNameController = TextEditingController();
   final _medDoseController = TextEditingController();
   final _medFreqController = TextEditingController();
+  final _medDurationController = TextEditingController(text: '3 أشهر');
   final _medNotesController = TextEditingController();
 
   // Diagnosis dialog input
@@ -40,8 +48,15 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
 
     final session = ref.read(clinicalSessionProvider).currentSession;
     _complaintController = TextEditingController(text: session?.chiefComplaint ?? '');
+    _sleepController = TextEditingController(text: session?.sleep ?? '');
+    _appetiteController = TextEditingController(text: session?.appetite ?? '');
+    _moodController = TextEditingController(text: session?.mood ?? '');
+    _anxietyController = TextEditingController(text: session?.anxiety ?? '');
+    _suicideController = TextEditingController(text: session?.suicidalSelfHarmAssessment ?? '');
+    _substanceController = TextEditingController(text: session?.substanceUse ?? '');
     _mseController = TextEditingController(text: session?.mentalStatusExam ?? '');
-    _planController = TextEditingController(text: session?.assessmentAndPlan ?? '');
+    _planController = TextEditingController(text: session?.treatmentPlan ?? '');
+    _followUpController = TextEditingController(text: session?.followUp ?? '');
     _generalNotesController = TextEditingController(text: session?.generalNotesTyped ?? '');
   }
 
@@ -49,22 +64,37 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
   void dispose() {
     _tabController.dispose();
     _complaintController.dispose();
+    _sleepController.dispose();
+    _appetiteController.dispose();
+    _moodController.dispose();
+    _anxietyController.dispose();
+    _suicideController.dispose();
+    _substanceController.dispose();
     _mseController.dispose();
     _planController.dispose();
+    _followUpController.dispose();
     _generalNotesController.dispose();
     _medNameController.dispose();
     _medDoseController.dispose();
     _medFreqController.dispose();
+    _medDurationController.dispose();
     _medNotesController.dispose();
     _diagController.dispose();
     super.dispose();
   }
 
   void _syncTypedNotes() {
-    ref.read(clinicalSessionProvider.notifier).updateTypedNotes(
+    ref.read(clinicalSessionProvider.notifier).updatePsychiatricSession(
           chiefComplaint: _complaintController.text,
+          sleep: _sleepController.text,
+          appetite: _appetiteController.text,
+          mood: _moodController.text,
+          anxiety: _anxietyController.text,
+          suicidalSelfHarmAssessment: _suicideController.text,
+          substanceUse: _substanceController.text,
           mentalStatusExam: _mseController.text,
-          assessmentAndPlan: _planController.text,
+          treatmentPlan: _planController.text,
+          followUp: _followUpController.text,
           generalNotesTyped: _generalNotesController.text,
         );
   }
@@ -121,6 +151,15 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
               ),
               const SizedBox(height: 12),
               TextField(
+                controller: _medDurationController,
+                decoration: const InputDecoration(
+                  labelText: 'المدة (Duration)',
+                  hintText: 'مثال: شهر، 6 أسابيع',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
                 controller: _medNotesController,
                 decoration: const InputDecoration(
                   labelText: 'تعليمات الطبيب للمريض',
@@ -144,6 +183,7 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
                         medicationName: _medNameController.text.trim(),
                         dose: _medDoseController.text.trim(),
                         frequency: _medFreqController.text.trim(),
+                        duration: _medDurationController.text.trim(),
                         instructions: _medNotesController.text.trim(),
                       ),
                     );
@@ -483,6 +523,130 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
           ),
           const SizedBox(height: 16),
 
+          // Biological & Affective Functions (Sleep, Appetite, Mood, Anxiety)
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'الوظائف البيولوجية والوجدانية (Biological & Affective Functions):',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1B4F72)),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _sleepController,
+                          enabled: !session.isFinalized,
+                          decoration: const InputDecoration(
+                            labelText: 'النوم (Sleep)',
+                            hintText: 'ساعات النوم، الأرق، الكوابيس',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.bedtime_outlined),
+                          ),
+                          onChanged: (_) => _syncTypedNotes(),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _appetiteController,
+                          enabled: !session.isFinalized,
+                          decoration: const InputDecoration(
+                            labelText: 'الشهية (Appetite)',
+                            hintText: 'طبيعية، منخفضة، شراهة',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.restaurant_outlined),
+                          ),
+                          onChanged: (_) => _syncTypedNotes(),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _moodController,
+                          enabled: !session.isFinalized,
+                          decoration: const InputDecoration(
+                            labelText: 'المزاج (Mood)',
+                            hintText: 'اكتئابي، قلق، منبسط، متقلب',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.sentiment_neutral_outlined),
+                          ),
+                          onChanged: (_) => _syncTypedNotes(),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _anxietyController,
+                          enabled: !session.isFinalized,
+                          decoration: const InputDecoration(
+                            labelText: 'القلق والتوتر (Anxiety)',
+                            hintText: 'توتر عام، نوبات هلع، أفكار ملحة',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.psychology_alt_outlined),
+                          ),
+                          onChanged: (_) => _syncTypedNotes(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Safety & Risk Assessment (Suicide/Self-Harm & Substance Use)
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'تقييم السلامة والخطورة (Safety & Substance Assessment):',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1B4F72)),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _suicideController,
+                    enabled: !session.isFinalized,
+                    decoration: const InputDecoration(
+                      labelText: 'تقييم الانتحار وإيذاء النفس (Suicidal / Self-Harm Assessment)',
+                      hintText: 'أفكار انتحارية، خطط، نية، عوامل حماية',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.warning_amber_rounded, color: Colors.amber),
+                    ),
+                    onChanged: (_) => _syncTypedNotes(),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _substanceController,
+                    enabled: !session.isFinalized,
+                    decoration: const InputDecoration(
+                      labelText: 'تعاطي المواد المخدرة والكحوليات (Substance Use)',
+                      hintText: 'تدخين، كحول، مهدئات، مخدرات أخرى',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.smoke_free_outlined),
+                    ),
+                    onChanged: (_) => _syncTypedNotes(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Mental Status Exam (MSE)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -517,7 +681,7 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
           ),
           const SizedBox(height: 16),
 
-          // Assessment and Treatment Plan
+          // Assessment and Treatment Plan & Follow-up
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             child: Padding(
@@ -526,7 +690,7 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'التقييم والخطة العلاجية (Assessment & Plan):',
+                    'الخطة العلاجية والمتابعة (Treatment Plan & Follow-Up):',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1B4F72)),
                   ),
                   const SizedBox(height: 8),
@@ -535,8 +699,21 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
                     maxLines: 3,
                     enabled: !session.isFinalized,
                     decoration: const InputDecoration(
-                      hintText: 'الخطة العلاجية، الأهداف السلوكية والمعرفية، وموعد المتابعة القادمة...',
+                      labelText: 'الخطة العلاجية الدوائية والسلوكية',
+                      hintText: 'الأهداف العلاجية، الواجبات المنزلية، التدخلات السلوكية...',
                       border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => _syncTypedNotes(),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _followUpController,
+                    enabled: !session.isFinalized,
+                    decoration: const InputDecoration(
+                      labelText: 'توصيات وموعد المتابعة القادمة (Follow-Up)',
+                      hintText: 'مثال: المتابعة بعد أسبوعين لمراجعة الجرعة وتأثير الدواء',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.event_repeat),
                     ),
                     onChanged: (_) => _syncTypedNotes(),
                   ),

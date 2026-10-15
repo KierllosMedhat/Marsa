@@ -14,6 +14,8 @@ from app.schemas.clinical import (
     DiagnosisResponse,
     MedicationResponse,
     PatientClinicalResponse,
+    PatientFileResponse,
+    PatientNoteResponse,
 )
 from app.schemas.patient import (
     PatientCreate,
@@ -54,6 +56,13 @@ def build_doctor_patient_response(patient: Patient) -> PatientDoctorResponse:
             psychiatric_history=decrypt_field(cr.psychiatric_history) if cr.psychiatric_history else None,
             family_history=decrypt_field(cr.family_history) if cr.family_history else None,
             social_history=decrypt_field(cr.social_history) if cr.social_history else None,
+            history=decrypt_field(cr.history) if cr.history else None,
+            psychiatric_examinations=decrypt_field(cr.psychiatric_examinations) if cr.psychiatric_examinations else None,
+            physical_neurological_exam=decrypt_field(cr.physical_neurological_exam) if cr.physical_neurological_exam else None,
+            risk_assessment=decrypt_field(cr.risk_assessment) if cr.risk_assessment else None,
+            suicide_attempts=decrypt_field(cr.suicide_attempts) if cr.suicide_attempts else None,
+            admitted_before=decrypt_field(cr.admitted_before) if cr.admitted_before else None,
+            notes=decrypt_field(cr.notes) if cr.notes else None,
             allergies=cr.allergies,
             updated_at=cr.updated_at,
             updated_by=cr.updated_by,
@@ -61,6 +70,8 @@ def build_doctor_patient_response(patient: Patient) -> PatientDoctorResponse:
 
     diagnoses_resp = [DiagnosisResponse.model_validate(d) for d in (patient.diagnoses or [])]
     medications_resp = [MedicationResponse.model_validate(m) for m in (patient.medications or [])]
+    files_resp = [PatientFileResponse.model_validate(f) for f in (patient.files or [])]
+    notes_resp = [PatientNoteResponse.model_validate(n) for n in (patient.notes or [])]
 
     return PatientDoctorResponse(
         patient_id=patient.patient_id,
@@ -74,12 +85,19 @@ def build_doctor_patient_response(patient: Patient) -> PatientDoctorResponse:
         email=patient.email,
         address=patient.address,
         emergency_contact=patient.emergency_contact,
+        occupation=patient.occupation,
+        marital_status=patient.marital_status,
+        children=patient.children,
+        first_session_date=patient.first_session_date,
+        last_session_date=patient.last_session_date,
         created_by=patient.created_by,
         created_at=patient.created_at,
         updated_at=patient.updated_at,
         clinical_record=clinical_resp,
         diagnoses=diagnoses_resp,
         medications=medications_resp,
+        files=files_resp,
+        notes=notes_resp,
     )
 
 
@@ -131,6 +149,11 @@ async def create_patient(
         email=payload.email,
         address=payload.address,
         emergency_contact=payload.emergency_contact,
+        occupation=payload.occupation,
+        marital_status=payload.marital_status,
+        children=payload.children,
+        first_session_date=payload.first_session_date,
+        last_session_date=payload.last_session_date,
         created_by=current_staff.staff_id,
     )
     db.add(new_patient)
@@ -173,6 +196,8 @@ async def list_patients(
             selectinload(Patient.clinical_record),
             selectinload(Patient.diagnoses),
             selectinload(Patient.medications),
+            selectinload(Patient.files),
+            selectinload(Patient.notes),
         )
         .order_by(Patient.created_at.desc())
     )
@@ -212,6 +237,8 @@ async def get_patient_detail(
             selectinload(Patient.clinical_record),
             selectinload(Patient.diagnoses),
             selectinload(Patient.medications),
+            selectinload(Patient.files),
+            selectinload(Patient.notes),
         )
     )
     result = await db.execute(stmt)
@@ -270,6 +297,8 @@ async def update_patient(
             selectinload(Patient.clinical_record),
             selectinload(Patient.diagnoses),
             selectinload(Patient.medications),
+            selectinload(Patient.files),
+            selectinload(Patient.notes),
         )
     )
     result = await db.execute(stmt)
@@ -299,6 +328,16 @@ async def update_patient(
         patient.address = payload.address
     if payload.emergency_contact is not None:
         patient.emergency_contact = payload.emergency_contact
+    if payload.occupation is not None:
+        patient.occupation = payload.occupation
+    if payload.marital_status is not None:
+        patient.marital_status = payload.marital_status
+    if payload.children is not None:
+        patient.children = payload.children
+    if payload.first_session_date is not None:
+        patient.first_session_date = payload.first_session_date
+    if payload.last_session_date is not None:
+        patient.last_session_date = payload.last_session_date
 
     patient.updated_at = utcnow()
     await db.commit()

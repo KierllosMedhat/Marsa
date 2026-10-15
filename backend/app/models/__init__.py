@@ -10,6 +10,8 @@ from app.models.clinical import (
     SessionStatus,
     SessionNote,
     NoteType,
+    PatientFile,
+    PatientNote,
 )
 from app.models.appointment import (
     AppointmentType,
@@ -41,6 +43,8 @@ __all__ = [
     "SessionStatus",
     "SessionNote",
     "NoteType",
+    "PatientFile",
+    "PatientNote",
     "AppointmentType",
     "Appointment",
     "AppointmentStatus",

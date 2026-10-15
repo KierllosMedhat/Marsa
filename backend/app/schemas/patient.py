@@ -7,6 +7,8 @@ from app.schemas.clinical import (
     DiagnosisResponse,
     MedicationResponse,
     PatientClinicalResponse,
+    PatientFileResponse,
+    PatientNoteResponse,
 )
 
 
@@ -20,6 +22,11 @@ class PatientBase(BaseModel):
     email: EmailStr | None = None
     address: str | None = None
     emergency_contact: dict | None = None
+    occupation: str | None = None
+    marital_status: str | None = None
+    children: str | None = None
+    first_session_date: date | None = None
+    last_session_date: date | None = None
 
 
 class PatientCreate(PatientBase):
@@ -36,6 +43,11 @@ class PatientUpdate(BaseModel):
     email: EmailStr | None = None
     address: str | None = None
     emergency_contact: dict | None = None
+    occupation: str | None = None
+    marital_status: str | None = None
+    children: str | None = None
+    first_session_date: date | None = None
+    last_session_date: date | None = None
 
 
 class PatientReceptionistResponse(BaseModel):
@@ -46,6 +58,8 @@ class PatientReceptionistResponse(BaseModel):
     name_en: str | None = None
     phone: str | None = None
     email: str | None = None
+    occupation: str | None = None
+    marital_status: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -62,6 +76,11 @@ class PatientSummaryResponse(BaseModel):
     email: str | None = None
     address: str | None = None
     emergency_contact: dict | None = None
+    occupation: str | None = None
+    marital_status: str | None = None
+    children: str | None = None
+    first_session_date: date | None = None
+    last_session_date: date | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -81,12 +100,19 @@ class PatientDoctorResponse(BaseModel):
     email: str | None = None
     address: str | None = None
     emergency_contact: dict | None = None
+    occupation: str | None = None
+    marital_status: str | None = None
+    children: str | None = None
+    first_session_date: date | None = None
+    last_session_date: date | None = None
     created_by: uuid.UUID
     created_at: datetime
     updated_at: datetime
     clinical_record: PatientClinicalResponse | None = None
     diagnoses: list[DiagnosisResponse] = []
     medications: list[MedicationResponse] = []
+    files: list[PatientFileResponse] = []
+    notes: list[PatientNoteResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
 

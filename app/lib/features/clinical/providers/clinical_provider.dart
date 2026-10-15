@@ -73,6 +73,42 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
     );
   }
 
+  void updatePsychiatricSession({
+    String? sessionNumber,
+    String? chiefComplaint,
+    String? sleep,
+    String? appetite,
+    String? mood,
+    String? anxiety,
+    String? suicidalSelfHarmAssessment,
+    String? substanceUse,
+    String? mentalStatusExam,
+    String? diagnosis,
+    String? treatmentPlan,
+    String? followUp,
+    String? generalNotesTyped,
+  }) {
+    final session = state.currentSession;
+    if (session == null || session.isFinalized) return;
+
+    if (sessionNumber != null) session.sessionNumber = sessionNumber;
+    if (chiefComplaint != null) session.chiefComplaint = chiefComplaint;
+    if (sleep != null) session.sleep = sleep;
+    if (appetite != null) session.appetite = appetite;
+    if (mood != null) session.mood = mood;
+    if (anxiety != null) session.anxiety = anxiety;
+    if (suicidalSelfHarmAssessment != null) session.suicidalSelfHarmAssessment = suicidalSelfHarmAssessment;
+    if (substanceUse != null) session.substanceUse = substanceUse;
+    if (mentalStatusExam != null) session.mentalStatusExam = mentalStatusExam;
+    if (diagnosis != null) session.diagnosis = diagnosis;
+    if (treatmentPlan != null) session.treatmentPlan = treatmentPlan;
+    if (followUp != null) session.followUp = followUp;
+    if (generalNotesTyped != null) session.generalNotesTyped = generalNotesTyped;
+
+    state = state.copyWith(currentSession: session);
+    autoSaveDraft();
+  }
+
   void updateTypedNotes({
     String? chiefComplaint,
     String? mentalStatusExam,
@@ -84,7 +120,7 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
 
     if (chiefComplaint != null) session.chiefComplaint = chiefComplaint;
     if (mentalStatusExam != null) session.mentalStatusExam = mentalStatusExam;
-    if (assessmentAndPlan != null) session.assessmentAndPlan = assessmentAndPlan;
+    if (assessmentAndPlan != null) session.treatmentPlan = assessmentAndPlan;
     if (generalNotesTyped != null) session.generalNotesTyped = generalNotesTyped;
 
     state = state.copyWith(currentSession: session);
@@ -138,14 +174,33 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
     // 1. Always save to local encrypted tablet storage first
     await _localStore.saveDraftNote(session.sessionId, session.toJson());
 
-    // 2. Attempt background push to backend API
+    // 2. Attempt background push to backend API (session update & session note)
+    await _apiClient.put(
+      '/clinical/sessions/${session.sessionId}',
+      body: {
+        'session_number': session.sessionNumber,
+        'chief_complaint': session.chiefComplaint,
+        'sleep': session.sleep,
+        'appetite': session.appetite,
+        'mood': session.mood,
+        'anxiety': session.anxiety,
+        'suicidal_self_harm_assessment': session.suicidalSelfHarmAssessment,
+        'substance_use': session.substanceUse,
+        'mental_status_examination': session.mentalStatusExam,
+        'diagnosis': session.diagnosis,
+        'treatment_plan': session.treatmentPlan,
+        'follow_up': session.followUp,
+      },
+    );
+
     final notePayload = {
       'note_type': session.inkStrokeJson != null ? 'mixed' : 'typed',
       'content_typed': [
         if (session.chiefComplaint.isNotEmpty) 'الشكوى: ${session.chiefComplaint}',
+        if (session.mood.isNotEmpty) 'المزاج والقلق: ${session.mood} | ${session.anxiety}',
         if (session.mentalStatusExam.isNotEmpty) 'فحص الحالة العقلية: ${session.mentalStatusExam}',
-        if (session.assessmentAndPlan.isNotEmpty) 'التقييم والخطة: ${session.assessmentAndPlan}',
-        if (session.generalNotesTyped.isNotEmpty) 'ملاحظات: ${session.generalNotesTyped}',
+        if (session.treatmentPlan.isNotEmpty) 'الخطة العلاجية: ${session.treatmentPlan}',
+        if (session.generalNotesTyped.isNotEmpty) 'ملاحظات إضافية: ${session.generalNotesTyped}',
       ].join('\n\n'),
       'is_draft': true,
     };
@@ -178,13 +233,38 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
     // 1. Update local storage
     await _localStore.saveDraftNote(session.sessionId, session.toJson());
 
-    // 2. Post finalized note to backend
+    // 2. Update session status on backend
+    await _apiClient.put(
+      '/clinical/sessions/${session.sessionId}',
+      body: {
+        'status': 'finalized',
+        'session_number': session.sessionNumber,
+        'chief_complaint': session.chiefComplaint,
+        'sleep': session.sleep,
+        'appetite': session.appetite,
+        'mood': session.mood,
+        'anxiety': session.anxiety,
+        'suicidal_self_harm_assessment': session.suicidalSelfHarmAssessment,
+        'substance_use': session.substanceUse,
+        'mental_status_examination': session.mentalStatusExam,
+        'diagnosis': session.diagnosis,
+        'treatment_plan': session.treatmentPlan,
+        'follow_up': session.followUp,
+      },
+    );
+
+    // 3. Post finalized note to backend
     final notePayload = {
       'note_type': session.inkStrokeJson != null ? 'mixed' : 'typed',
       'content_typed': [
         if (session.chiefComplaint.isNotEmpty) 'الشكوى الرئيسية:\n${session.chiefComplaint}',
+        if (session.sleep.isNotEmpty || session.appetite.isNotEmpty) 'الوظائف البيولوجية: نوم: ${session.sleep} | شهية: ${session.appetite}',
+        if (session.mood.isNotEmpty || session.anxiety.isNotEmpty) 'الحالة الوجدانية: مزاج: ${session.mood} | قلق: ${session.anxiety}',
+        if (session.suicidalSelfHarmAssessment.isNotEmpty) 'تقييم السلامة والانتحار: ${session.suicidalSelfHarmAssessment}',
+        if (session.substanceUse.isNotEmpty) 'المواد المخدرة: ${session.substanceUse}',
         if (session.mentalStatusExam.isNotEmpty) 'فحص الحالة العقلية (MSE):\n${session.mentalStatusExam}',
-        if (session.assessmentAndPlan.isNotEmpty) 'التقييم والخطة العلاجية:\n${session.assessmentAndPlan}',
+        if (session.treatmentPlan.isNotEmpty) 'الخطة العلاجية:\n${session.treatmentPlan}',
+        if (session.followUp.isNotEmpty) 'المتابعة:\n${session.followUp}',
         if (session.generalNotesTyped.isNotEmpty) 'ملاحظات الطبيب:\n${session.generalNotesTyped}',
         if (session.activeDiagnoses.isNotEmpty) 'التشخيصات المسجلة: ${session.activeDiagnoses.join('، ')}',
       ].join('\n\n---\n\n'),

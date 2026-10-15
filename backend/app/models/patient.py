@@ -80,6 +80,31 @@ class Patient(Base):
         nullable=True,
         comment="Emergency contact details (name, relation, phone) / بيانات جهة الاتصال للطوارئ",
     )
+    occupation: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Patient occupation / مهنة المريض",
+    )
+    marital_status: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Marital status (single, married, etc.) / الحالة الاجتماعية",
+    )
+    children: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Number/details of children / عدد وتفاصيل الأبناء",
+    )
+    first_session_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+        comment="Date of first clinical session / تاريخ أول جلسة",
+    )
+    last_session_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+        comment="Date of most recent session / تاريخ آخر جلسة",
+    )
     created_by: Mapped[uuid.UUID] = mapped_column(
         Uuid,
         ForeignKey("staff.staff_id"),
@@ -132,4 +157,14 @@ class Patient(Base):
     appointments = relationship(
         "Appointment",
         back_populates="patient",
+    )
+    files = relationship(
+        "PatientFile",
+        back_populates="patient",
+        cascade="all, delete-orphan",
+    )
+    notes = relationship(
+        "PatientNote",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
