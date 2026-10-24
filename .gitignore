@@ -1,21 +1,24 @@
 # مرساة — Git ignore rules
 
+# ─── Node.js / Next.js ─────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+.vercel/
+next-env.d.ts
+data/
+
 # ─── Python ────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-# Python eggs / build
-/lib/
-/lib64/
-!app/lib/
 parts/
 sdist/
 var/
@@ -25,14 +28,10 @@ wheels/
 *.egg
 MANIFEST
 *.pyo
-
-# Virtual environments
 .venv/
 venv/
 ENV/
 env/
-
-# uv
 .uv/
 
 # ─── Environment / Secrets ─────────────────────────────────────────────────
@@ -45,57 +44,46 @@ secrets/
 !.env.example
 !**/.env.example
 
-# ─── Flutter / Dart ────────────────────────────────────────────────────────
-app/.dart_tool/
-app/.flutter-plugins
-app/.flutter-plugins-dependencies
-app/.pub-cache/
-app/.pub/
-app/build/
-app/android/.gradle/
-app/android/captures/
-app/android/local.properties
-app/android/key.jks
-app/ios/.symlinks/
-app/ios/Flutter/flutter_export_environment.sh
-app/ios/Flutter/Generated.xcconfig
-app/ios/Pods/
-app/linux/flutter/generated_plugin_registrant.cc
-app/linux/flutter/generated_plugin_registrant.h
-app/linux/flutter/generated_plugins.cmake
-app/macos/Flutter/GeneratedPluginRegistrant.swift
-app/macos/Flutter/ephemeral/
-app/windows/flutter/generated_plugin_registrant.cc
-app/windows/flutter/generated_plugin_registrant.h
-app/windows/flutter/generated_plugins.cmake
+# ─── Flutter / Dart (flutter_app) ──────────────────────────────────────────
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins
+flutter_app/.flutter-plugins-dependencies
+flutter_app/.pub-cache/
+flutter_app/.pub/
+flutter_app/build/
+flutter_app/android/.gradle/
+flutter_app/android/captures/
+flutter_app/android/local.properties
+flutter_app/android/key.jks
+flutter_app/ios/.symlinks/
+flutter_app/ios/Flutter/flutter_export_environment.sh
+flutter_app/ios/Flutter/Generated.xcconfig
+flutter_app/ios/Pods/
+flutter_app/linux/flutter/generated_plugin_registrant.cc
+flutter_app/linux/flutter/generated_plugin_registrant.h
+flutter_app/linux/flutter/generated_plugins.cmake
+flutter_app/macos/Flutter/GeneratedPluginRegistrant.swift
+flutter_app/macos/Flutter/ephemeral/
+flutter_app/windows/flutter/generated_plugin_registrant.cc
+flutter_app/windows/flutter/generated_plugin_registrant.h
+flutter_app/windows/flutter/generated_plugins.cmake
 
-# ─── Node.js / Next.js ─────────────────────────────────────────────────────
-web/node_modules/
-web/.next/
-web/out/
-web/.vercel/
-web/.env
-web/.env.local
+# Keep pre-compiled Flutter web portal in public/portal for instant Vercel deployment
+!public/portal/
+!public/portal/**
 
-# ─── IDEs ──────────────────────────────────────────────────────────────────
+# ─── IDEs & Logs ───────────────────────────────────────────────────────────
 .idea/
 .vscode/settings.json
 *.swp
 *.swo
 .DS_Store
 Thumbs.db
-
-# ─── Test artifacts ────────────────────────────────────────────────────────
 .pytest_cache/
 htmlcov/
 .coverage
 coverage.xml
 *.lcov
-
-# ─── Docker ────────────────────────────────────────────────────────────────
-# Don't ignore docker-compose.yml — it's safe to commit (no secrets)
 docker-compose.override.yml
-
-# ─── Logs ──────────────────────────────────────────────────────────────────
 *.log
 logs/

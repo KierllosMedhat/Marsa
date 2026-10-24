@@ -21,13 +21,23 @@ class ApiResponse<T> {
 }
 
 class ApiClient {
-  // Configurable via --dart-define=API_BASE_URL=https://... at build time
-  String _baseUrl = const String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:8000',
-  );
+  // Configurable via --dart-define=API_BASE_URL=https://... at build time,
+  // or auto-detects same-origin /api when running in web browser (e.g. on Vercel).
+  String _baseUrl = _resolveDefaultBaseUrl();
   String? _accessToken;
   String? _refreshToken;
+
+  static String _resolveDefaultBaseUrl() {
+    const envUrl = String.fromEnvironment('API_BASE_URL');
+    if (envUrl.isNotEmpty) {
+      return envUrl.endsWith('/') ? envUrl.substring(0, envUrl.length - 1) : envUrl;
+    }
+    final base = Uri.base;
+    if (base.scheme == 'http' || base.scheme == 'https') {
+      return '${base.origin}/api';
+    }
+    return 'http://localhost:3000/api';
+  }
 
   String get baseUrl => _baseUrl;
   String? get refreshToken => _refreshToken;
