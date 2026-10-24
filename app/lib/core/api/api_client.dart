@@ -20,9 +20,11 @@ class ApiResponse<T> {
   });
 }
 
-class ApiClient {
-  // In development, default to localhost / 10.0.2.2. Can be configured dynamically.
-  String _baseUrl = 'http://localhost:8000';
+  // Configurable via --dart-define=API_BASE_URL=https://... at build time
+  String _baseUrl = const String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:8000',
+  );
   String? _accessToken;
   String? _refreshToken;
 

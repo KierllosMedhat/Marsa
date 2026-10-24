@@ -1,7 +1,8 @@
 // Marsa Public Website JavaScript & Interactive Calendar
-const API_BASE = window.location.origin.includes(':8000') 
-  ? window.location.origin 
-  : 'http://localhost:8000';
+const API_BASE = window.MARSA_API_BASE 
+  || localStorage.getItem('marsa_api_base')
+  || (window.location.origin.includes(':8000') ? window.location.origin : null)
+  || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : (window.ENV_API_URL || 'https://api-marsa.onrender.com'));
 
 const bookingModal = document.getElementById('publicBookingModal');
 const btnOpenBooking = document.getElementById('btnOpenBookingModal');
