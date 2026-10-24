@@ -20,6 +20,7 @@ class ApiResponse<T> {
   });
 }
 
+class ApiClient {
   // Configurable via --dart-define=API_BASE_URL=https://... at build time
   String _baseUrl = const String.fromEnvironment(
     'API_BASE_URL',
