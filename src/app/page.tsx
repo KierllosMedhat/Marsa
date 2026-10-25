@@ -24,6 +24,16 @@ const ARABIC_MONTHS = [
   'ديسمبر',
 ];
 
+const ARABIC_WEEKDAYS = [
+  'الأحد',
+  'الإثنين',
+  'الثلاثاء',
+  'الأربعاء',
+  'الخميس',
+  'الجمعة',
+  'السبت',
+];
+
 const CLINIC_SLOTS = [
   { time24: '14:00', label: '02:00 م' },
   { time24: '15:00', label: '03:00 م' },
@@ -34,58 +44,50 @@ const CLINIC_SLOTS = [
   { time24: '20:00', label: '08:00 م' },
 ];
 
+const DEFAULT_TYPES: AppointmentType[] = [
+  {
+    type_id: '41c617ef-a313-43f4-9812-b85c35f99bdf',
+    name_ar: 'كشف وتقييم نفسي أولي',
+    duration_minutes: 60,
+    price_egp: 800,
+  },
+  {
+    type_id: 'b23192df-aeae-4a11-b3ce-be0c324ee592',
+    name_ar: 'جلسة علاج معرفي سلوكي (CBT)',
+    duration_minutes: 45,
+    price_egp: 600,
+  },
+  {
+    type_id: 'f9a71352-7b90-4d61-bed6-f87bdbfbcfed',
+    name_ar: 'متابعة استشارية وتقييم دوائي',
+    duration_minutes: 30,
+    price_egp: 500,
+  },
+];
+
 export default function HomePage() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [types, setTypes] = useState<AppointmentType[]>([
-    {
-      type_id: '41c617ef-a313-43f4-9812-b85c35f99bdf',
-      name_ar: 'كشف وتقييم نفسي أولي',
-      duration_minutes: 60,
-      price_egp: 800,
-    },
-    {
-      type_id: 'b23192df-aeae-4a11-b3ce-be0c324ee592',
-      name_ar: 'جلسة علاج معرفي سلوكي (CBT)',
-      duration_minutes: 45,
-      price_egp: 600,
-    },
-    {
-      type_id: 'f9a71352-7b90-4d61-bed6-f87bdbfbcfed',
-      name_ar: 'متابعة استشارية وتقييم دوائي',
-      duration_minutes: 30,
-      price_egp: 500,
-    },
-  ]);
+  const [types, setTypes] = useState<AppointmentType[]>(DEFAULT_TYPES);
 
   // Booking form state
   const [bookName, setBookName] = useState('');
   const [bookPhone, setBookPhone] = useState('');
   const [bookEmail, setBookEmail] = useState('');
-  const [bookTypeId, setBookTypeId] = useState(
-    '41c617ef-a313-43f4-9812-b85c35f99bdf'
-  );
+  const [bookTypeId, setBookTypeId] = useState(DEFAULT_TYPES[0].type_id);
   const [bookNotes, setBookNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [bookingSuccessMsg, setBookingSuccessMsg] = useState<string | null>(
     null
   );
+  const [bookingErrorMsg, setBookingErrorMsg] = useState<string | null>(null);
 
-  // Calendar state
-  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
-  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    for (let i = 0; i < 30; i++) {
-      const cand = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() + i
-      );
-      if ((cand.getDay() + 1) % 7 !== 6) return cand; // Skip Friday
-    }
-    return today;
-  });
+  // Calendar state (deterministic initial values to prevent SSR hydration mismatch)
+  const [calMonth, setCalMonth] = useState<number>(9); // October (0-indexed)
+  const [calYear, setCalYear] = useState<number>(2026);
+  const [selectedDate, setSelectedDate] = useState<Date>(
+    () => new Date(2026, 9, 26)
+  );
+  const [todayDate, setTodayDate] = useState<Date>(() => new Date(2026, 9, 25));
   const [selectedSlot, setSelectedSlot] = useState<string>('14:00');
 
   // GAD-7 Screening state
@@ -98,6 +100,30 @@ export default function HomePage() {
   } | null>(null);
 
   useEffect(() => {
+    const now = new Date();
+    const todayClean = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    setTodayDate(todayClean);
+    setCalMonth(todayClean.getMonth());
+    setCalYear(todayClean.getFullYear());
+
+    for (let i = 0; i < 30; i++) {
+      const cand = new Date(
+        todayClean.getFullYear(),
+        todayClean.getMonth(),
+        todayClean.getDate() + i
+      );
+      if ((cand.getDay() + 1) % 7 !== 6) {
+        setSelectedDate(cand);
+        setCalMonth(cand.getMonth());
+        setCalYear(cand.getFullYear());
+        break;
+      }
+    }
+
     fetch('/api/appointments/types')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -108,6 +134,12 @@ export default function HomePage() {
       })
       .catch(() => {});
   }, []);
+
+  const openBookingModal = () => {
+    setBookingSuccessMsg(null);
+    setBookingErrorMsg(null);
+    setModalOpen(true);
+  };
 
   const handlePrevMonth = () => {
     if (calMonth === 0) {
@@ -135,20 +167,22 @@ export default function HomePage() {
   };
 
   const getSelectedSlotReadable = () => {
-    const dateLabel = selectedDate.toLocaleDateString('ar-EG', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const dayName = ARABIC_WEEKDAYS[selectedDate.getDay()] || '';
+    const dayNum = selectedDate.getDate();
+    const monthName = ARABIC_MONTHS[selectedDate.getMonth()] || '';
+    const yearNum = selectedDate.getFullYear();
     const slotObj = CLINIC_SLOTS.find((s) => s.time24 === selectedSlot);
-    return `الموعد المختار: ${dateLabel} — الساعة ${slotObj?.label || selectedSlot}`;
+    return `الموعد المختار: ${dayName} ${dayNum} ${monthName} ${yearNum} — الساعة ${
+      slotObj?.label || selectedSlot
+    }`;
   };
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setBookingErrorMsg(null);
+
     if (!bookName.trim() || !bookPhone.trim()) {
-      alert('يرجى ملء الاسم ورقم الهاتف.');
+      setBookingErrorMsg('يرجى إدخال الاسم بالكامل ورقم الهاتف المحمول.');
       return;
     }
 
@@ -168,8 +202,8 @@ export default function HomePage() {
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const data = await res.json().catch(() => ({}));
         setBookName('');
         setBookPhone('');
         setBookEmail('');
@@ -181,11 +215,14 @@ export default function HomePage() {
           `شكراً لك! تم تسجيل موعدك بنجاح في نظام عيادة مرساة${mrnPart}، وسيتم التواصل معك من قِبل فريق الاستقبال لتأكيد الحضور.`
         );
       } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.detail || 'حدث خطأ أثناء إرسال الطلب.');
+        setBookingErrorMsg(
+          data.detail || 'حدث خطأ أثناء إرسال طلب الحجز. يرجى المحاولة مرة أخرى.'
+        );
       }
     } catch {
-      alert('تعذر إرسال الطلب حالياً. يرجى المحاولة مرة أخرى.');
+      setBookingErrorMsg(
+        'تعذر الاتصال بالخادم حالياً. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -217,8 +254,263 @@ export default function HomePage() {
   const firstDay = new Date(calYear, calMonth, 1);
   const totalDays = new Date(calYear, calMonth + 1, 0).getDate();
   const startOffset = (firstDay.getDay() + 1) % 7;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+
+  const renderBookingFormContent = (isModal: boolean) => {
+    if (bookingSuccessMsg) {
+      return (
+        <div style={{ textAlign: 'center', padding: '24px 12px' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '12px' }}>✅</div>
+          <h4
+            style={{
+              color: 'var(--primary)',
+              fontSize: '1.2rem',
+              marginBottom: '10px',
+            }}
+          >
+            تم تسجيل طلب الحجز بنجاح
+          </h4>
+          <p
+            style={{
+              color: 'var(--text-muted)',
+              marginBottom: '20px',
+              fontSize: '0.95rem',
+            }}
+          >
+            {bookingSuccessMsg}
+          </p>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '10px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setBookingSuccessMsg(null);
+                if (isModal) setModalOpen(false);
+              }}
+            >
+              {isModal ? 'حسناً، إغلاق' : 'حجز موعد آخر'}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <form onSubmit={handleBookingSubmit}>
+        {bookingErrorMsg && (
+          <div
+            style={{
+              marginBottom: '14px',
+              padding: '12px',
+              borderRadius: '8px',
+              background: '#FEF2F2',
+              border: '1px solid #FECACA',
+              color: '#991B1B',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+            }}
+          >
+            ⚠️ {bookingErrorMsg}
+          </div>
+        )}
+        <div className="form-group">
+          <label>الاسم بالكامل *</label>
+          <input
+            type="text"
+            className="form-control"
+            required
+            placeholder="مثال: يوسف أحمد"
+            value={bookName}
+            onChange={(e) => setBookName(e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label>رقم الهاتف المحمول (مصر) *</label>
+          <input
+            type="tel"
+            className="form-control"
+            required
+            placeholder="01012345678"
+            dir="ltr"
+            value={bookPhone}
+            onChange={(e) => setBookPhone(e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label>البريد الإلكتروني (اختياري)</label>
+          <input
+            type="email"
+            className="form-control"
+            placeholder="user@example.com"
+            dir="ltr"
+            value={bookEmail}
+            onChange={(e) => setBookEmail(e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label>نوع الجلسة المطلوبة *</label>
+          <select
+            className="form-control"
+            required
+            value={bookTypeId}
+            onChange={(e) => setBookTypeId(e.target.value)}
+          >
+            {types.map((t) => (
+              <option key={t.type_id} value={t.type_id}>
+                {t.name_ar} ({t.duration_minutes} دقيقة — {t.price_egp} ج.م)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Interactive Calendar & Time Slots */}
+        <div className="calendar-picker-box">
+          <div className="calendar-header">
+            <span className="calendar-month-title">
+              {ARABIC_MONTHS[calMonth]} {calYear}
+            </span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button
+                type="button"
+                className="btn-cal-nav"
+                onClick={handlePrevMonth}
+              >
+                ›
+              </button>
+              <button
+                type="button"
+                className="btn-cal-nav"
+                onClick={handleNextMonth}
+              >
+                ‹
+              </button>
+            </div>
+          </div>
+
+          <div className="calendar-weekdays">
+            <span>سبت</span>
+            <span>أحد</span>
+            <span>إثنين</span>
+            <span>ثلاثاء</span>
+            <span>أربعاء</span>
+            <span>خميس</span>
+            <span style={{ color: '#EF4444' }}>جمعة</span>
+          </div>
+
+          <div className="calendar-days-grid">
+            {Array.from({ length: startOffset }).map((_, idx) => (
+              <div key={`empty-${idx}`} className="cal-day-cell disabled" />
+            ))}
+            {Array.from({ length: totalDays }).map((_, idx) => {
+              const dayNum = idx + 1;
+              const cellDate = new Date(calYear, calMonth, dayNum);
+              const isFriday = (cellDate.getDay() + 1) % 7 === 6;
+              const isPast = cellDate < todayDate;
+              const isSelected =
+                selectedDate.getFullYear() === calYear &&
+                selectedDate.getMonth() === calMonth &&
+                selectedDate.getDate() === dayNum;
+
+              const classes = ['cal-day-cell'];
+              if (isFriday) classes.push('disabled', 'friday');
+              else if (isPast) classes.push('disabled');
+              else if (isSelected) classes.push('selected');
+
+              return (
+                <div
+                  key={dayNum}
+                  className={classes.join(' ')}
+                  title={isFriday ? 'عطلة العيادة الأسبوعية' : undefined}
+                  onClick={() => {
+                    if (!isFriday && !isPast) {
+                      setSelectedDate(new Date(calYear, calMonth, dayNum));
+                    }
+                  }}
+                >
+                  {dayNum}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ marginTop: '14px' }}>
+            <label
+              style={{
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                color: 'var(--primary)',
+              }}
+            >
+              اختر توقيت الجلسة (بتوقيت القاهرة) *
+            </label>
+            <div className="slots-grid">
+              {CLINIC_SLOTS.map((slot) => (
+                <button
+                  key={slot.time24}
+                  type="button"
+                  className={`slot-btn ${
+                    selectedSlot === slot.time24 ? 'active' : ''
+                  }`}
+                  onClick={() => setSelectedSlot(slot.time24)}
+                >
+                  {slot.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="selected-appointment-badge">
+            <span>🗓️</span>
+            <span>{getSelectedSlotReadable()}</span>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>ملاحظات إضافية (اختياري)</label>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="أي تفاصيل ترغب في مشاركتها مسبقاً مع العيادة..."
+            value={bookNotes}
+            onChange={(e) => setBookNotes(e.target.value)}
+          />
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '10px',
+            marginTop: '20px',
+          }}
+        >
+          {isModal && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => setModalOpen(false)}
+            >
+              إلغاء
+            </button>
+          )}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: isModal ? 'auto' : '100%', padding: '12px 24px' }}
+            disabled={submitting}
+          >
+            {submitting ? 'جاري إرسال طلب الحجز...' : '📅 تأكيد طلب الحجز الآن'}
+          </button>
+        </div>
+      </form>
+    );
+  };
 
   return (
     <>
@@ -247,6 +539,9 @@ export default function HomePage() {
               <a href="#doctor">عن الطبيب</a>
             </li>
             <li>
+              <a href="#booking">حجز موعد</a>
+            </li>
+            <li>
               <a href="#screening">التقييم النفسي الذاتي</a>
             </li>
             <li>
@@ -256,11 +551,9 @@ export default function HomePage() {
 
           <div className="header-cta" style={{ display: 'flex', gap: '8px' }}>
             <button
+              type="button"
               className="btn btn-primary"
-              onClick={() => {
-                setBookingSuccessMsg(null);
-                setModalOpen(true);
-              }}
+              onClick={openBookingModal}
             >
               احجز استشارتك الآن
             </button>
@@ -269,6 +562,16 @@ export default function HomePage() {
         <div className="mobile-nav-bar">
           <a href="#services">الخدمات</a>
           <a href="#doctor">عن الطبيب</a>
+          <a
+            href="#booking"
+            onClick={(e) => {
+              e.preventDefault();
+              openBookingModal();
+            }}
+            style={{ color: 'var(--primary)', fontWeight: 700 }}
+          >
+            📅 حجز موعد
+          </a>
           <a href="#screening">التقييم الذاتي</a>
           <a href="#location">العنوان</a>
         </div>
@@ -286,11 +589,9 @@ export default function HomePage() {
           </p>
           <div className="hero-actions">
             <button
+              type="button"
               className="btn btn-primary"
-              onClick={() => {
-                setBookingSuccessMsg(null);
-                setModalOpen(true);
-              }}
+              onClick={openBookingModal}
             >
               📅 احجز استشارتك في العيادة
             </button>
@@ -480,6 +781,14 @@ export default function HomePage() {
               </span>
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={openBookingModal}
+                style={{ fontSize: '0.88rem' }}
+              >
+                <span>📅 حجز موعد في العيادة</span>
+              </button>
               <a
                 href="https://wa.me/qr/F2QRTFS2PZAIJ1?s=v"
                 target="_blank"
@@ -517,6 +826,23 @@ export default function HomePage() {
               </a>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Direct On-Page Booking Section */}
+      <section id="booking">
+        <div className="section-header">
+          <h2 className="section-title">حجز موعد في عيادة مرساة</h2>
+          <p className="section-subtitle">
+            اختر اليوم والتوقيت المناسب لك ليتم تسجيل موعدك مباشرةً في جدول العيادة
+          </p>
+        </div>
+
+        <div
+          className="test-card"
+          style={{ maxWidth: '640px', margin: '0 auto' }}
+        >
+          {renderBookingFormContent(false)}
         </div>
       </section>
 
@@ -768,6 +1094,17 @@ export default function HomePage() {
               </li>
               <li>
                 <a
+                  href="#booking"
+                  style={{
+                    color: 'rgba(255,255,255,0.7)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  حجز موعد
+                </a>
+              </li>
+              <li>
+                <a
                   href="#screening"
                   style={{
                     color: 'rgba(255,255,255,0.7)',
@@ -805,7 +1142,12 @@ export default function HomePage() {
       </footer>
 
       {/* Modal: Public Appointment Booking */}
-      <div className={`modal-overlay ${modalOpen ? 'active' : ''}`}>
+      <div
+        className={`modal-overlay ${modalOpen ? 'active' : ''}`}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setModalOpen(false);
+        }}
+      >
         <div className="modal">
           <div
             style={{
@@ -830,234 +1172,7 @@ export default function HomePage() {
             </button>
           </div>
 
-          {bookingSuccessMsg ? (
-            <div style={{ textAlign: 'center', padding: '24px 12px' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '12px' }}>✅</div>
-              <h4
-                style={{
-                  color: 'var(--primary)',
-                  fontSize: '1.2rem',
-                  marginBottom: '10px',
-                }}
-              >
-                تم تسجيل طلب الحجز بنجاح
-              </h4>
-              <p
-                style={{
-                  color: 'var(--text-muted)',
-                  marginBottom: '20px',
-                  fontSize: '0.95rem',
-                }}
-              >
-                {bookingSuccessMsg}
-              </p>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => setModalOpen(false)}
-                >
-                  حسناً، إغلاق
-                </button>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleBookingSubmit}>
-              <div className="form-group">
-                <label>الاسم بالكامل *</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  placeholder="مثال: يوسف أحمد"
-                  value={bookName}
-                  onChange={(e) => setBookName(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label>رقم الهاتف المحمول (مصر) *</label>
-                <input
-                  type="tel"
-                  className="form-control"
-                  required
-                  placeholder="01012345678"
-                  dir="ltr"
-                  value={bookPhone}
-                  onChange={(e) => setBookPhone(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label>البريد الإلكتروني (لتأكيد الموعد)</label>
-                <input
-                  type="email"
-                  className="form-control"
-                  placeholder="user@example.com"
-                  dir="ltr"
-                  value={bookEmail}
-                  onChange={(e) => setBookEmail(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label>نوع الجلسة المطلوبة *</label>
-                <select
-                  className="form-control"
-                  required
-                  value={bookTypeId}
-                  onChange={(e) => setBookTypeId(e.target.value)}
-                >
-                  {types.map((t) => (
-                    <option key={t.type_id} value={t.type_id}>
-                      {t.name_ar} ({t.duration_minutes} دقيقة — {t.price_egp} ج.م)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Interactive Calendar & Time Slots */}
-              <div className="calendar-picker-box">
-                <div className="calendar-header">
-                  <span className="calendar-month-title">
-                    {ARABIC_MONTHS[calMonth]} {calYear}
-                  </span>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button
-                      type="button"
-                      className="btn-cal-nav"
-                      onClick={handlePrevMonth}
-                    >
-                      ›
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-cal-nav"
-                      onClick={handleNextMonth}
-                    >
-                      ‹
-                    </button>
-                  </div>
-                </div>
-
-                <div className="calendar-weekdays">
-                  <span>سبت</span>
-                  <span>أحد</span>
-                  <span>إثنين</span>
-                  <span>ثلاثاء</span>
-                  <span>أربعاء</span>
-                  <span>خميس</span>
-                  <span style={{ color: '#EF4444' }}>جمعة</span>
-                </div>
-
-                <div className="calendar-days-grid">
-                  {Array.from({ length: startOffset }).map((_, idx) => (
-                    <div key={`empty-${idx}`} className="cal-day-cell disabled" />
-                  ))}
-                  {Array.from({ length: totalDays }).map((_, idx) => {
-                    const dayNum = idx + 1;
-                    const cellDate = new Date(calYear, calMonth, dayNum);
-                    const isFriday = (cellDate.getDay() + 1) % 7 === 6;
-                    const isPast = cellDate < today;
-                    const isSelected =
-                      selectedDate.getFullYear() === calYear &&
-                      selectedDate.getMonth() === calMonth &&
-                      selectedDate.getDate() === dayNum;
-
-                    const classes = ['cal-day-cell'];
-                    if (isFriday) classes.push('disabled', 'friday');
-                    else if (isPast) classes.push('disabled');
-                    else if (isSelected) classes.push('selected');
-
-                    return (
-                      <div
-                        key={dayNum}
-                        className={classes.join(' ')}
-                        title={isFriday ? 'عطلة العيادة الأسبوعية' : undefined}
-                        onClick={() => {
-                          if (!isFriday && !isPast) {
-                            setSelectedDate(new Date(calYear, calMonth, dayNum));
-                          }
-                        }}
-                      >
-                        {dayNum}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div style={{ marginTop: '14px' }}>
-                  <label
-                    style={{
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: 'var(--primary)',
-                    }}
-                  >
-                    اختر توقيت الجلسة (بتوقيت القاهرة) *
-                  </label>
-                  <div className="slots-grid">
-                    {CLINIC_SLOTS.map((slot) => (
-                      <button
-                        key={slot.time24}
-                        type="button"
-                        className={`slot-btn ${
-                          selectedSlot === slot.time24 ? 'active' : ''
-                        }`}
-                        onClick={() => setSelectedSlot(slot.time24)}
-                      >
-                        {slot.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="selected-appointment-badge">
-                  <span>🗓️</span>
-                  <span>{getSelectedSlotReadable()}</span>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>ملاحظات إضافية (اختياري)</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="أي تفاصيل ترغب في مشاركتها مسبقاً مع العيادة..."
-                  value={bookNotes}
-                  onChange={(e) => setBookNotes(e.target.value)}
-                />
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: '10px',
-                  marginTop: '20px',
-                }}
-              >
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => setModalOpen(false)}
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={submitting}
-                >
-                  {submitting ? 'جاري إرسال طلب الحجز...' : 'تأكيد طلب الحجز'}
-                </button>
-              </div>
-            </form>
-          )}
+          {renderBookingFormContent(true)}
         </div>
       </div>
     </>

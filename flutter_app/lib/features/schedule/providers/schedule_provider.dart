@@ -54,6 +54,12 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
     loadAppointments();
   }
 
+  void addLocalAppointment(AppointmentItem item) {
+    state = state.copyWith(
+      appointments: [item, ...state.appointments],
+    );
+  }
+
   Future<void> loadAppointments() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
 
