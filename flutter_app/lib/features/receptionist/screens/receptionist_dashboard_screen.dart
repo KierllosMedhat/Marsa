@@ -577,7 +577,12 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentTabIndex,
-        onDestinationSelected: (idx) => setState(() => _currentTabIndex = idx),
+        onDestinationSelected: (idx) {
+          setState(() => _currentTabIndex = idx);
+          if (idx == 0) ref.read(scheduleProvider.notifier).loadAppointments();
+          if (idx == 1) _loadPatients(_patientSearchController.text);
+          if (idx == 2) _loadBookingRequests();
+        },
         destinations: [
           const NavigationDestination(
             icon: Icon(Icons.calendar_today_outlined),
@@ -644,7 +649,11 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                   IconButton(
                     icon: const Icon(Icons.refresh),
                     tooltip: 'تحديث',
-                    onPressed: () => ref.read(scheduleProvider.notifier).loadAppointments(),
+                    onPressed: () {
+                      ref.read(scheduleProvider.notifier).loadAppointments();
+                      _loadBookingRequests();
+                      _loadPatients(_patientSearchController.text);
+                    },
                   ),
                   const SizedBox(width: 4),
                   ElevatedButton.icon(
@@ -745,9 +754,17 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: const Color(0xFFD5E2CE)),
                       ),
-                      child: Text(
-                        appt.timeFormatted,
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF45632D), fontSize: 12),
+                      child: Column(
+                        children: [
+                          Text(
+                            appt.dateFormatted,
+                            style: const TextStyle(fontSize: 10, color: Color(0xFF45632D)),
+                          ),
+                          Text(
+                            appt.timeFormatted,
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF45632D), fontSize: 12),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -763,6 +780,11 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                             Text(
                               appt.patientMrn!,
                               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                            ),
+                          if (appt.notes != null && appt.notes!.isNotEmpty)
+                            Text(
+                              appt.notes!,
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF2E86AB)),
                             ),
                         ],
                       ),

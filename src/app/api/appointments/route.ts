@@ -30,15 +30,17 @@ export async function GET(req: NextRequest) {
 
   const allAppointments = [...db.appointments];
 
-  // Sort: appointments matching selected date first, then newest/upcoming website bookings
+  // Sort: newest website/clinic bookings first, then date match
   allAppointments.sort((a, b) => {
+    const createdDiff = b.created_at.localeCompare(a.created_at);
+    if (createdDiff !== 0) return createdDiff;
     if (dateFilter) {
       const aMatches = a.slot_start.slice(0, 10) === dateFilter;
       const bMatches = b.slot_start.slice(0, 10) === dateFilter;
       if (aMatches && !bMatches) return -1;
       if (!aMatches && bMatches) return 1;
     }
-    return b.created_at.localeCompare(a.created_at);
+    return 0;
   });
 
   return NextResponse.json(allAppointments.map(enrichAppointment));

@@ -26,15 +26,18 @@ class ApiClient {
   String? _refreshToken;
   bool _isRefreshing = false;
 
+  static const String productionBaseUrl =
+      'https://marsa-clinic-xi.vercel.app/api';
+
   static String normalizeBaseUrl(String rawUrl) {
     var url = rawUrl.trim();
     while (url.endsWith('/')) {
       url = url.substring(0, url.length - 1);
     }
     if (url.isEmpty) {
-      return 'http://localhost:3000/api';
+      return productionBaseUrl;
     }
-    // Automatically append /api if pointing to Next.js server without /api suffix
+    // Automatically append /api if pointing to Next.js/Vercel server without /api suffix
     if (!url.endsWith('/api') && !url.endsWith(':8000')) {
       url = '$url/api';
     }
@@ -48,14 +51,14 @@ class ApiClient {
     }
     final base = Uri.base;
     if (base.scheme == 'http' || base.scheme == 'https') {
-      // When running Flutter Web via `flutter run`, Uri.base is http://localhost:<random_port>.
-      // Always route local dev traffic to the Next.js backend on port 3000.
+      // When running Flutter Web locally via `flutter run`, route to local Next.js server
       if (base.host == 'localhost' || base.host == '127.0.0.1') {
         return 'http://${base.host}:3000/api';
       }
       return '${base.origin}/api';
     }
-    return 'http://localhost:3000/api';
+    // Native Android / Windows / Tablet app connects directly to the live Vercel backend
+    return productionBaseUrl;
   }
 
   String get baseUrl => _baseUrl;

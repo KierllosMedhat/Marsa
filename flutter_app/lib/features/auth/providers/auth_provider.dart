@@ -56,7 +56,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _initAuth() async {
     final savedBaseUrl = await _localStore.getBaseUrl();
     if (savedBaseUrl != null && savedBaseUrl.isNotEmpty) {
-      _apiClient.setBaseUrl(savedBaseUrl);
+      if (savedBaseUrl.contains('localhost') ||
+          savedBaseUrl.contains('127.0.0.1') ||
+          savedBaseUrl.contains('10.0.2.2')) {
+        await _localStore.clearBaseUrl();
+        _apiClient.resetBaseUrl();
+      } else {
+        _apiClient.setBaseUrl(savedBaseUrl);
+      }
     }
 
     final token = await _localStore.getAccessToken();
