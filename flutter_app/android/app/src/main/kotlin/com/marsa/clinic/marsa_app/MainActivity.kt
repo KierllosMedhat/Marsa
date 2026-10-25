@@ -27,11 +27,11 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // Huawei M-Pencil double-tap gesture on HarmonyOS / MatePad sends F19 (189), F20 (190),
-        // or STYLUS button key events depending on HarmonyOS version.
-        if (keyCode == KeyEvent.KEYCODE_F19 ||
-            keyCode == KeyEvent.KEYCODE_F20 ||
-            keyCode == 718 // HarmonyOS internal M-Pencil double-tap keycode
+        // Huawei M-Pencil double-tap gesture on HarmonyOS / MatePad sends keycode 189 (F19),
+        // 190 (F20), or 718 (HarmonyOS internal M-Pencil double-tap keycode).
+        if (keyCode == 189 ||
+            keyCode == 190 ||
+            keyCode == 718
         ) {
             triggerStylusDoubleTap("hardware_key_$keyCode")
             return true
