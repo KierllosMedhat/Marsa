@@ -59,22 +59,11 @@ export function signToken(
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    const parts = token.split('.');
+    if (!token || typeof token !== 'string') return null;
+    const parts = token.trim().split('.');
     if (parts.length !== 3) return null;
     const [headerB64, payloadB64, sigB64] = parts;
-    const header = JSON.parse(base64UrlDecode(headerB64));
     const payload = JSON.parse(base64UrlDecode(payloadB64)) as TokenPayload;
-
-    // Support seamless migration from legacy local FastAPI RS256 tokens stored in browser localStorage
-    if (header.alg === 'RS256' && payload.role) {
-      return {
-        sub: payload.sub,
-        role: payload.role,
-        type: payload.type || 'access',
-        iat: payload.iat || 0,
-        exp: Math.floor(Date.now() / 1000) + 86400,
-      };
-    }
 
     const unsigned = `${headerB64}.${payloadB64}`;
     const expectedSig = base64UrlEncode(
@@ -97,6 +86,7 @@ export function hashPassword(password: string): string {
 }
 
 export function verifyPassword(password: string, storedHash: string): boolean {
+  if (!password || !storedHash) return false;
   if (storedHash.startsWith('scrypt$')) {
     const parts = storedHash.split('$');
     const salt = parts[1] || 'marsa_argon_salt_v1';
@@ -105,6 +95,20 @@ export function verifyPassword(password: string, storedHash: string): boolean {
     return derived === expected;
   }
   return password === storedHash;
+}
+
+export function formatStaffUser(staff: StaffMember) {
+  return {
+    staff_id: staff.staff_id,
+    role: staff.role,
+    name_ar: staff.name_ar,
+    name_en: staff.name_en,
+    email: staff.email,
+    phone: staff.phone,
+    mfa_enabled: staff.mfa_enabled,
+    is_active: staff.is_active,
+    created_at: staff.created_at,
+  };
 }
 
 export function getStaffFromRequest(req: NextRequest): StaffMember | null {
@@ -119,7 +123,6 @@ export function getStaffFromRequest(req: NextRequest): StaffMember | null {
   const db = getDb();
   let staff = db.staff.find((s) => s.staff_id === payload.sub && s.is_active);
   if (!staff && payload.role) {
-    // Fallback by role if migrating from a previous database instance
     staff = db.staff.find((s) => s.role === payload.role && s.is_active);
   }
   return staff || null;
@@ -133,7 +136,7 @@ export function requireAuth(
   if (!staff) {
     return {
       error: NextResponse.json(
-        { detail: 'Not authenticated' },
+        { detail: 'غير مصرح بالدخول — يرجى تسجيل الدخول أولاً' },
         { status: 401 }
       ),
     };
@@ -141,7 +144,7 @@ export function requireAuth(
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(staff.role)) {
     return {
       error: NextResponse.json(
-        { detail: `Access forbidden: requires role in [${allowedRoles.join(', ')}]` },
+        { detail: `غير مسموح بهذه العملية لصلاحية (${staff.role})` },
         { status: 403 }
       ),
     };

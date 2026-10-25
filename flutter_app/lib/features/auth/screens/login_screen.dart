@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/storage/local_store.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -15,6 +16,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController(text: 'DoctorPass123!');
   final _totpController = TextEditingController();
   bool _obscurePassword = true;
+  String _selectedRole = 'doctor';
 
   @override
   void dispose() {
@@ -24,8 +26,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  void _selectRolePreset(String role) {
+    ref.read(authProvider.notifier).clearError();
+    setState(() {
+      _selectedRole = role;
+      if (role == 'receptionist') {
+        _emailController.text = 'receptionist@marsa.clinic';
+        _passwordController.text = 'ReceptionPass123!';
+      } else {
+        _emailController.text = 'doctor@marsa.clinic';
+        _passwordController.text = 'DoctorPass123!';
+      }
+    });
+  }
+
+  void _submitLogin() {
+    final authState = ref.read(authProvider);
+    if (authState.isLoading) return;
+    ref.read(authProvider.notifier).login(
+          _emailController.text,
+          _passwordController.text,
+        );
+  }
+
   void _showServerSettingsDialog() {
     final client = ref.read(apiClientProvider);
+    final localStore = ref.read(localStoreProvider);
     final urlController = TextEditingController(text: client.baseUrl);
 
     showDialog(
@@ -37,15 +63,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'أدخل عنوان خادم العيادة المحلي أو السحابي:',
-              style: TextStyle(fontSize: 14),
+              'أدخل عنوان خادم العيادة المحلي أو السحابي (Next.js API):',
+              style: TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: urlController,
               decoration: const InputDecoration(
-                labelText: 'عنوان الخادم (Base URL)',
-                hintText: 'http://192.168.1.100:8000',
+                labelText: 'عنوان الخادم (API Base URL)',
+                hintText: 'http://localhost:3000/api',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.dns),
               ),
@@ -55,16 +81,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         actions: [
           TextButton(
+            onPressed: () async {
+              client.resetBaseUrl();
+              await localStore.clearBaseUrl();
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'تمت استعادة العنوان الافتراضي: ${client.baseUrl}',
+                    ),
+                  ),
+                );
+              }
+            },
+            child: const Text('استعادة الافتراضي'),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('إلغاء'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               client.setBaseUrl(urlController.text.trim());
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('تم تحديث عنوان الخادم إلى: ${client.baseUrl}')),
-              );
+              await localStore.saveBaseUrl(client.baseUrl);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'تم تحديث عنوان الخادم إلى: ${client.baseUrl}',
+                    ),
+                  ),
+                );
+              }
             },
             child: const Text('حفظ'),
           ),
@@ -83,8 +133,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          isMobile ? 'عيادة مرساة — بوابة الدخول' : 'مرساة — بوابة الكادر الطبي والاستقبال',
-          style: TextStyle(fontSize: isMobile ? 16 : 18, fontWeight: FontWeight.bold),
+          isMobile
+              ? 'عيادة مرساة — بوابة الدخول'
+              : 'مرساة — بوابة الكادر الطبي والاستقبال (Flutter App)',
+          style: TextStyle(
+            fontSize: isMobile ? 16 : 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           IconButton(
@@ -101,7 +156,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             constraints: const BoxConstraints(maxWidth: 520),
             child: Card(
               elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Padding(
                 padding: EdgeInsets.all(isMobile ? 18.0 : 32.0),
                 child: Column(
@@ -115,7 +172,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         height: 84,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFB58728), width: 2.5),
+                          border: Border.all(
+                            color: const Color(0xFFB58728),
+                            width: 2.5,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: theme.primaryColor.withAlpha(40),
@@ -167,12 +227,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.error_outline, color: Colors.red.shade700),
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.red.shade700,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 authState.errorMessage!,
-                                style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                                style: TextStyle(
+                                  color: Colors.red.shade800,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                           ],
@@ -194,17 +260,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           children: [
                             Expanded(
                               child: InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _emailController.text = 'doctor@marsa.clinic';
-                                    _passwordController.text = 'DoctorPass123!';
-                                  });
-                                },
+                                onTap: () => _selectRolePreset('doctor'),
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: !_emailController.text.contains('receptionist')
+                                    color: _selectedRole == 'doctor'
                                         ? const Color(0xFF45632D)
                                         : Colors.transparent,
                                     borderRadius: BorderRadius.circular(8),
@@ -215,7 +278,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       Icon(
                                         Icons.medical_services_outlined,
                                         size: 16,
-                                        color: !_emailController.text.contains('receptionist')
+                                        color: _selectedRole == 'doctor'
                                             ? Colors.white
                                             : Colors.black87,
                                       ),
@@ -225,7 +288,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13,
-                                          color: !_emailController.text.contains('receptionist')
+                                          color: _selectedRole == 'doctor'
                                               ? Colors.white
                                               : Colors.black87,
                                         ),
@@ -238,17 +301,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             const SizedBox(width: 4),
                             Expanded(
                               child: InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _emailController.text = 'receptionist@marsa.clinic';
-                                    _passwordController.text = 'ReceptionPass123!';
-                                  });
-                                },
+                                onTap: () => _selectRolePreset('receptionist'),
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: _emailController.text.contains('receptionist')
+                                    color: _selectedRole == 'receptionist'
                                         ? const Color(0xFF45632D)
                                         : Colors.transparent,
                                     borderRadius: BorderRadius.circular(8),
@@ -259,7 +319,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       Icon(
                                         Icons.desk_outlined,
                                         size: 16,
-                                        color: _emailController.text.contains('receptionist')
+                                        color: _selectedRole == 'receptionist'
                                             ? Colors.white
                                             : Colors.black87,
                                       ),
@@ -269,7 +329,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13,
-                                          color: _emailController.text.contains('receptionist')
+                                          color: _selectedRole == 'receptionist'
                                               ? Colors.white
                                               : Colors.black87,
                                         ),
@@ -285,25 +345,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 16),
                       TextField(
                         controller: _emailController,
+                        onChanged: (val) {
+                          ref.read(authProvider.notifier).clearError();
+                          final isRecep =
+                              val.toLowerCase().contains('reception');
+                          if ((isRecep && _selectedRole != 'receptionist') ||
+                              (!isRecep && _selectedRole != 'doctor')) {
+                            setState(() {
+                              _selectedRole =
+                                  isRecep ? 'receptionist' : 'doctor';
+                            });
+                          }
+                        },
                         decoration: const InputDecoration(
                           labelText: 'البريد الإلكتروني المهني',
                           prefixIcon: Icon(Icons.email_outlined),
                           border: OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
                         textDirection: TextDirection.ltr,
                       ),
                       const SizedBox(height: 16),
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
+                        onChanged: (_) =>
+                            ref.read(authProvider.notifier).clearError(),
+                        onSubmitted: (_) => _submitLogin(),
+                        textInputAction: TextInputAction.done,
                         decoration: InputDecoration(
                           labelText: 'كلمة المرور المشفرة',
                           prefixIcon: const Icon(Icons.lock_outline),
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                              _obscurePassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
                             ),
                             onPressed: () {
                               setState(() {
@@ -316,14 +395,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: authState.isLoading
-                            ? null
-                            : () {
-                                ref.read(authProvider.notifier).login(
-                                      _emailController.text,
-                                      _passwordController.text,
-                                    );
-                              },
+                        onPressed: authState.isLoading ? null : _submitLogin,
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           backgroundColor: theme.primaryColor,
@@ -336,11 +408,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : const Text(
                                 'تسجيل الدخول الآمن',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                       ),
                     ] else ...[
@@ -362,14 +440,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
                         maxLength: 6,
-                        style: const TextStyle(fontSize: 22, letterSpacing: 8, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 22,
+                          letterSpacing: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: authState.isLoading
                             ? null
                             : () {
-                                ref.read(authProvider.notifier).verifyMfa(_totpController.text);
+                                ref
+                                    .read(authProvider.notifier)
+                                    .verifyMfa(_totpController.text);
                               },
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -383,11 +467,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : const Text(
                                 'تأكيد الرمز والمتابعة',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                       ),
                     ],
@@ -401,8 +491,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.wifi_off_outlined, size: 16),
-                            label: const Text('طبيب (Offline)', style: TextStyle(fontSize: 12)),
+                            icon: const Icon(
+                              Icons.wifi_off_outlined,
+                              size: 16,
+                            ),
+                            label: const Text(
+                              'طبيب (Offline)',
+                              style: TextStyle(fontSize: 12),
+                            ),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               side: BorderSide(color: Colors.blueGrey.shade300),
@@ -415,14 +511,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.wifi_off_outlined, size: 16),
-                            label: const Text('استقبال (Offline)', style: TextStyle(fontSize: 12)),
+                            icon: const Icon(
+                              Icons.wifi_off_outlined,
+                              size: 16,
+                            ),
+                            label: const Text(
+                              'استقبال (Offline)',
+                              style: TextStyle(fontSize: 12),
+                            ),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               side: BorderSide(color: Colors.blueGrey.shade300),
                             ),
                             onPressed: () {
-                              ref.read(authProvider.notifier).signInOfflineReceptionist();
+                              ref
+                                  .read(authProvider.notifier)
+                                  .signInOfflineReceptionist();
                             },
                           ),
                         ),

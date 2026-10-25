@@ -37,7 +37,7 @@ class PatientState {
 
 final patientProvider = StateNotifierProvider<PatientNotifier, PatientState>((ref) {
   final apiClient = ref.read(apiClientProvider);
-  ref.watch(authProvider.select((s) => s.isAuthenticated));
+  ref.watch(authProvider.select((s) => '${s.isAuthenticated}_${s.user?.staffId}_${s.user?.role}'));
   return PatientNotifier(apiClient);
 });
 

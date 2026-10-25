@@ -178,7 +178,7 @@ export default function HomePage() {
           ? ` (رقم الملف الطبي: ${data.patient_mrn})`
           : '';
         setBookingSuccessMsg(
-          `شكراً لك! تم تسجيل موعدك مباشرةً في نظام بوابة العيادة${mrnPart}. يمكنك الآن رؤيته فوراً في جدول مواعيد الطبيب والاستقبال.`
+          `شكراً لك! تم تسجيل موعدك بنجاح في نظام عيادة مرساة${mrnPart}، وسيتم التواصل معك من قِبل فريق الاستقبال لتأكيد الحضور.`
         );
       } else {
         const err = await res.json().catch(() => ({}));
@@ -252,24 +252,9 @@ export default function HomePage() {
             <li>
               <a href="#location">العنوان والمواعيد</a>
             </li>
-            <li>
-              <a
-                href="/portal"
-                style={{ color: 'var(--primary)', fontWeight: 700 }}
-              >
-                🩺 بوابة العيادة
-              </a>
-            </li>
           </ul>
 
           <div className="header-cta" style={{ display: 'flex', gap: '8px' }}>
-            <a
-              href="/portal"
-              className="btn btn-outline"
-              style={{ padding: '8px 14px', fontSize: '0.88rem' }}
-            >
-              🩺 بوابة الطبيب
-            </a>
             <button
               className="btn btn-primary"
               onClick={() => {
@@ -286,9 +271,6 @@ export default function HomePage() {
           <a href="#doctor">عن الطبيب</a>
           <a href="#screening">التقييم الذاتي</a>
           <a href="#location">العنوان</a>
-          <a href="/portal" style={{ color: 'var(--primary)', fontWeight: 700 }}>
-            🩺 بوابة العيادة
-          </a>
         </div>
       </header>
 
@@ -797,14 +779,13 @@ export default function HomePage() {
               </li>
               <li>
                 <a
-                  href="/portal"
+                  href="#location"
                   style={{
-                    color: '#DFAC47',
+                    color: 'rgba(255,255,255,0.7)',
                     textDecoration: 'none',
-                    fontWeight: 700,
                   }}
                 >
-                  🩺 بوابة الكادر الطبي (Flutter App) ↗
+                  العنوان ومواعيد العمل
                 </a>
               </li>
             </ul>
@@ -878,15 +859,12 @@ export default function HomePage() {
                   flexWrap: 'wrap',
                 }}
               >
-                <a href="/portal" className="btn btn-primary">
-                  🩺 فتح بوابة العيادة الآن
-                </a>
                 <button
                   type="button"
-                  className="btn btn-outline"
+                  className="btn btn-primary"
                   onClick={() => setModalOpen(false)}
                 >
-                  إغلاق
+                  حسناً، إغلاق
                 </button>
               </div>
             </div>

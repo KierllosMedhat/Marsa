@@ -17,6 +17,7 @@ class LocalStore {
   static const String _keyToken = 'marsa_access_token';
   static const String _keyRefreshToken = 'marsa_refresh_token';
   static const String _keyStaffUser = 'marsa_staff_user';
+  static const String _keyBaseUrl = 'marsa_api_base_url';
   static const String _keyDraftNotes = 'marsa_draft_notes_';
   static const String _keyOfflineQueue = 'marsa_offline_queue';
 
@@ -47,11 +48,31 @@ class LocalStore {
     return prefs.getString(_keyToken);
   }
 
+  Future<String?> getRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyRefreshToken);
+  }
+
   Future<void> clearAuth() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyToken);
     await prefs.remove(_keyRefreshToken);
     await prefs.remove(_keyStaffUser);
+  }
+
+  Future<void> saveBaseUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyBaseUrl, url);
+  }
+
+  Future<String?> getBaseUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyBaseUrl);
+  }
+
+  Future<void> clearBaseUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyBaseUrl);
   }
 
   Future<void> saveDraftNote(String sessionId, Map<String, dynamic> noteData) async {

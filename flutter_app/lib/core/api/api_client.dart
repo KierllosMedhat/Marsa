@@ -21,34 +21,60 @@ class ApiResponse<T> {
 }
 
 class ApiClient {
-  // Configurable via --dart-define=API_BASE_URL=https://... at build time,
-  // or auto-detects same-origin /api when running in web browser (e.g. on Vercel).
-  String _baseUrl = _resolveDefaultBaseUrl();
+  String _baseUrl = resolveDefaultBaseUrl();
   String? _accessToken;
   String? _refreshToken;
+  bool _isRefreshing = false;
 
-  static String _resolveDefaultBaseUrl() {
+  static String normalizeBaseUrl(String rawUrl) {
+    var url = rawUrl.trim();
+    while (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+    if (url.isEmpty) {
+      return 'http://localhost:3000/api';
+    }
+    // Automatically append /api if pointing to Next.js server without /api suffix
+    if (!url.endsWith('/api') && !url.endsWith(':8000')) {
+      url = '$url/api';
+    }
+    return url;
+  }
+
+  static String resolveDefaultBaseUrl() {
     const envUrl = String.fromEnvironment('API_BASE_URL');
     if (envUrl.isNotEmpty) {
-      return envUrl.endsWith('/') ? envUrl.substring(0, envUrl.length - 1) : envUrl;
+      return normalizeBaseUrl(envUrl);
     }
     final base = Uri.base;
     if (base.scheme == 'http' || base.scheme == 'https') {
+      // When running Flutter Web via `flutter run`, Uri.base is http://localhost:<random_port>.
+      // Always route local dev traffic to the Next.js backend on port 3000.
+      if (base.host == 'localhost' || base.host == '127.0.0.1') {
+        return 'http://${base.host}:3000/api';
+      }
       return '${base.origin}/api';
     }
     return 'http://localhost:3000/api';
   }
 
   String get baseUrl => _baseUrl;
+  String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
 
   void setBaseUrl(String url) {
-    _baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+    _baseUrl = normalizeBaseUrl(url);
+  }
+
+  void resetBaseUrl() {
+    _baseUrl = resolveDefaultBaseUrl();
   }
 
   void setTokens({required String accessToken, String? refreshToken}) {
     _accessToken = accessToken;
-    _refreshToken = refreshToken;
+    if (refreshToken != null) {
+      _refreshToken = refreshToken;
+    }
   }
 
   void clearTokens() {
@@ -61,10 +87,69 @@ class ApiClient {
       'Content-Type': 'application/json; charset=utf-8',
       'Accept': 'application/json',
     };
-    if (includeAuth && _accessToken != null) {
+    if (includeAuth && _accessToken != null && _accessToken!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $_accessToken';
     }
     return headers;
+  }
+
+  Future<bool> _tryRefreshToken() async {
+    if (_isRefreshing ||
+        _refreshToken == null ||
+        _refreshToken!.isEmpty ||
+        _refreshToken!.startsWith('offline_')) {
+      return false;
+    }
+    _isRefreshing = true;
+    try {
+      final uri = Uri.parse('$_baseUrl/auth/refresh');
+      final response = await http
+          .post(
+            uri,
+            headers: _buildHeaders(includeAuth: false),
+            body: jsonEncode({'refresh_token': _refreshToken}),
+          )
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data =
+            jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        final newAccess = data['access_token'] as String?;
+        final newRefresh = data['refresh_token'] as String?;
+        if (newAccess != null && newAccess.isNotEmpty) {
+          _accessToken = newAccess;
+          if (newRefresh != null && newRefresh.isNotEmpty) {
+            _refreshToken = newRefresh;
+          }
+          return true;
+        }
+      }
+      return false;
+    } catch (_) {
+      return false;
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  Future<http.Response> _sendWithFallback(
+    Future<http.Response> Function(String base) requestFn,
+  ) async {
+    try {
+      return await requestFn(_baseUrl).timeout(const Duration(seconds: 10));
+    } catch (firstErr) {
+      // If running inside an Android emulator where host machine is 10.0.2.2 instead of localhost
+      if (_baseUrl.contains('localhost:3000')) {
+        final emulatorBase = _baseUrl.replaceFirst('localhost:3000', '10.0.2.2:3000');
+        try {
+          final res =
+              await requestFn(emulatorBase).timeout(const Duration(seconds: 6));
+          _baseUrl = emulatorBase;
+          return res;
+        } catch (_) {}
+      }
+      rethrow;
+    }
   }
 
   Future<ApiResponse<Map<String, dynamic>>> get(
@@ -73,15 +158,26 @@ class ApiClient {
     bool includeAuth = true,
   }) async {
     try {
-      var uri = Uri.parse('$_baseUrl$endpoint');
-      if (queryParams != null && queryParams.isNotEmpty) {
-        uri = uri.replace(queryParameters: queryParams);
-      }
+      http.Response response = await _sendWithFallback((base) {
+        var uri = Uri.parse('$base$endpoint');
+        if (queryParams != null && queryParams.isNotEmpty) {
+          uri = uri.replace(queryParameters: queryParams);
+        }
+        return http.get(uri, headers: _buildHeaders(includeAuth: includeAuth));
+      });
 
-      final response = await http.get(
-        uri,
-        headers: _buildHeaders(includeAuth: includeAuth),
-      );
+      if (response.statusCode == 401 &&
+          includeAuth &&
+          endpoint != '/auth/refresh' &&
+          await _tryRefreshToken()) {
+        response = await _sendWithFallback((base) {
+          var uri = Uri.parse('$base$endpoint');
+          if (queryParams != null && queryParams.isNotEmpty) {
+            uri = uri.replace(queryParameters: queryParams);
+          }
+          return http.get(uri, headers: _buildHeaders(includeAuth: includeAuth));
+        });
+      }
 
       return _handleResponse(response);
     } catch (e) {
@@ -99,12 +195,29 @@ class ApiClient {
     bool includeAuth = true,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl$endpoint');
-      final response = await http.post(
-        uri,
-        headers: _buildHeaders(includeAuth: includeAuth),
-        body: body != null ? jsonEncode(body) : null,
-      );
+      http.Response response = await _sendWithFallback((base) {
+        final uri = Uri.parse('$base$endpoint');
+        return http.post(
+          uri,
+          headers: _buildHeaders(includeAuth: includeAuth),
+          body: body != null ? jsonEncode(body) : null,
+        );
+      });
+
+      if (response.statusCode == 401 &&
+          includeAuth &&
+          endpoint != '/auth/login' &&
+          endpoint != '/auth/refresh' &&
+          await _tryRefreshToken()) {
+        response = await _sendWithFallback((base) {
+          final uri = Uri.parse('$base$endpoint');
+          return http.post(
+            uri,
+            headers: _buildHeaders(includeAuth: includeAuth),
+            body: body != null ? jsonEncode(body) : null,
+          );
+        });
+      }
 
       return _handleResponse(response);
     } catch (e) {
@@ -122,12 +235,27 @@ class ApiClient {
     bool includeAuth = true,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl$endpoint');
-      final response = await http.patch(
-        uri,
-        headers: _buildHeaders(includeAuth: includeAuth),
-        body: body != null ? jsonEncode(body) : null,
-      );
+      http.Response response = await _sendWithFallback((base) {
+        final uri = Uri.parse('$base$endpoint');
+        return http.patch(
+          uri,
+          headers: _buildHeaders(includeAuth: includeAuth),
+          body: body != null ? jsonEncode(body) : null,
+        );
+      });
+
+      if (response.statusCode == 401 &&
+          includeAuth &&
+          await _tryRefreshToken()) {
+        response = await _sendWithFallback((base) {
+          final uri = Uri.parse('$base$endpoint');
+          return http.patch(
+            uri,
+            headers: _buildHeaders(includeAuth: includeAuth),
+            body: body != null ? jsonEncode(body) : null,
+          );
+        });
+      }
 
       return _handleResponse(response);
     } catch (e) {
@@ -145,12 +273,27 @@ class ApiClient {
     bool includeAuth = true,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl$endpoint');
-      final response = await http.put(
-        uri,
-        headers: _buildHeaders(includeAuth: includeAuth),
-        body: body != null ? jsonEncode(body) : null,
-      );
+      http.Response response = await _sendWithFallback((base) {
+        final uri = Uri.parse('$base$endpoint');
+        return http.put(
+          uri,
+          headers: _buildHeaders(includeAuth: includeAuth),
+          body: body != null ? jsonEncode(body) : null,
+        );
+      });
+
+      if (response.statusCode == 401 &&
+          includeAuth &&
+          await _tryRefreshToken()) {
+        response = await _sendWithFallback((base) {
+          final uri = Uri.parse('$base$endpoint');
+          return http.put(
+            uri,
+            headers: _buildHeaders(includeAuth: includeAuth),
+            body: body != null ? jsonEncode(body) : null,
+          );
+        });
+      }
 
       return _handleResponse(response);
     } catch (e) {
@@ -168,12 +311,27 @@ class ApiClient {
     bool includeAuth = true,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl$endpoint');
-      final response = await http.delete(
-        uri,
-        headers: _buildHeaders(includeAuth: includeAuth),
-        body: body != null ? jsonEncode(body) : null,
-      );
+      http.Response response = await _sendWithFallback((base) {
+        final uri = Uri.parse('$base$endpoint');
+        return http.delete(
+          uri,
+          headers: _buildHeaders(includeAuth: includeAuth),
+          body: body != null ? jsonEncode(body) : null,
+        );
+      });
+
+      if (response.statusCode == 401 &&
+          includeAuth &&
+          await _tryRefreshToken()) {
+        response = await _sendWithFallback((base) {
+          final uri = Uri.parse('$base$endpoint');
+          return http.delete(
+            uri,
+            headers: _buildHeaders(includeAuth: includeAuth),
+            body: body != null ? jsonEncode(body) : null,
+          );
+        });
+      }
 
       return _handleResponse(response);
     } catch (e) {
@@ -191,15 +349,25 @@ class ApiClient {
     bool includeAuth = true,
   }) async {
     try {
-      var uri = Uri.parse('$_baseUrl$endpoint');
-      if (queryParams != null && queryParams.isNotEmpty) {
-        uri = uri.replace(queryParameters: queryParams);
-      }
+      http.Response response = await _sendWithFallback((base) {
+        var uri = Uri.parse('$base$endpoint');
+        if (queryParams != null && queryParams.isNotEmpty) {
+          uri = uri.replace(queryParameters: queryParams);
+        }
+        return http.get(uri, headers: _buildHeaders(includeAuth: includeAuth));
+      });
 
-      final response = await http.get(
-        uri,
-        headers: _buildHeaders(includeAuth: includeAuth),
-      );
+      if (response.statusCode == 401 &&
+          includeAuth &&
+          await _tryRefreshToken()) {
+        response = await _sendWithFallback((base) {
+          var uri = Uri.parse('$base$endpoint');
+          if (queryParams != null && queryParams.isNotEmpty) {
+            uri = uri.replace(queryParameters: queryParams);
+          }
+          return http.get(uri, headers: _buildHeaders(includeAuth: includeAuth));
+        });
+      }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(utf8.decode(response.bodyBytes));
@@ -209,10 +377,17 @@ class ApiClient {
           data: decoded is List ? decoded : [decoded],
         );
       } else {
+        String error = 'خطأ (${response.statusCode})';
+        try {
+          final errJson = jsonDecode(utf8.decode(response.bodyBytes));
+          if (errJson is Map && errJson['detail'] != null) {
+            error = errJson['detail'].toString();
+          }
+        } catch (_) {}
         return ApiResponse(
           isSuccess: false,
           statusCode: response.statusCode,
-          errorMessage: 'خطأ: ${response.statusCode} - ${response.body}',
+          errorMessage: error,
         );
       }
     } catch (e) {
@@ -227,7 +402,15 @@ class ApiClient {
   ApiResponse<Map<String, dynamic>> _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       try {
-        final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        if (response.bodyBytes.isEmpty) {
+          return ApiResponse(
+            isSuccess: true,
+            statusCode: response.statusCode,
+            data: {},
+          );
+        }
+        final data =
+            jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
         return ApiResponse(
           isSuccess: true,
           statusCode: response.statusCode,
@@ -241,7 +424,7 @@ class ApiClient {
         );
       }
     } else {
-      String error = 'حدث خطأ غير متوقع (${response.statusCode})';
+      String error = 'حدث خطأ في الاتصال بالخادم (${response.statusCode})';
       try {
         final errorJson = jsonDecode(utf8.decode(response.bodyBytes));
         if (errorJson is Map && errorJson.containsKey('detail')) {

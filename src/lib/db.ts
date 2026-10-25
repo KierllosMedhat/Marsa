@@ -620,6 +620,9 @@ export function getDb(): MarsaDatabase {
     if (fs.existsSync(filePath)) {
       const raw = fs.readFileSync(filePath, 'utf8');
       const parsed = JSON.parse(raw) as MarsaDatabase;
+      if (!Array.isArray(parsed.staff) || parsed.staff.length === 0) {
+        parsed.staff = createInitialSeedData().staff;
+      }
       globalForDb.__marsaDb = parsed;
       return parsed;
     }
