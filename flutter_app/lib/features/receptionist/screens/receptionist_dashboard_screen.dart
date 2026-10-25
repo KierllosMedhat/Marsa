@@ -372,56 +372,63 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
     final scheduleState = ref.watch(scheduleProvider);
     final theme = Theme.of(context);
     final dateFormat = DateFormat('EEEE، d MMMM yyyy', 'ar');
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: isMobile ? 8 : 16,
         title: Row(
           children: [
             ClipOval(
               child: Image.asset(
                 'assets/images/logo.jpg',
-                width: 34,
-                height: 34,
+                width: 32,
+                height: 32,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.psychology, size: 24),
+                errorBuilder: (_, __, ___) => const Icon(Icons.psychology, size: 22),
               ),
             ),
-            const SizedBox(width: 10),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'عيادة مرساة',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                Text(
-                  'بوابة موظف الاستقبال',
-                  style: TextStyle(fontSize: 11, color: Colors.white70),
-                ),
-              ],
+            const SizedBox(width: 8),
+            const Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'عيادة مرساة',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'بوابة موظف الاستقبال',
+                    style: TextStyle(fontSize: 11, color: Colors.white70),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
-          // Staff Name Pill
-          Chip(
-            avatar: const CircleAvatar(
-              backgroundColor: Colors.white24,
-              child: Icon(Icons.badge, size: 16, color: Colors.white),
+          if (!isMobile) ...[
+            Chip(
+              avatar: const CircleAvatar(
+                backgroundColor: Colors.white24,
+                child: Icon(Icons.badge, size: 16, color: Colors.white),
+              ),
+              label: Text(
+                authState.user?.nameAr ?? 'موظف الاستقبال',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+              backgroundColor: theme.primaryColorDark,
             ),
-            label: Text(
-              authState.user?.nameAr ?? 'موظف الاستقبال',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-            ),
-            backgroundColor: theme.primaryColorDark,
-          ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'تسجيل الخروج',
             onPressed: () => ref.read(authProvider.notifier).logout(),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isMobile ? 4 : 8),
         ],
       ),
       body: Column(
@@ -429,15 +436,17 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
           // Security / Privacy Isolation Banner
           Container(
             color: const Color(0xFFF1F5E9),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Row(
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: 8),
+            child: Row(
               children: [
-                Icon(Icons.shield_outlined, size: 20, color: Color(0xFF45632D)),
-                SizedBox(width: 8),
+                const Icon(Icons.shield_outlined, size: 18, color: Color(0xFF45632D)),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'نظام حماية خصوصية المرضى مفعل: حساب الاستقبال مصرح له بإدارة الحجوزات والحضور وسجلات التواصل فقط. السجلات والتشخيصات الطبية محجوبة برمجياً ومحصورة بالطبيب.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF2F451E), fontWeight: FontWeight.w600),
+                    isMobile
+                        ? 'حساب الاستقبال: مصرح بإدارة الحجوزات والحضور فقط (السجلات الطبية محجوبة).'
+                        : 'نظام حماية خصوصية المرضى مفعل: حساب الاستقبال مصرح له بإدارة الحجوزات والحضور وسجلات التواصل فقط. السجلات والتشخيصات الطبية محجوبة برمجياً ومحصورة بالطبيب.',
+                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF2F451E), fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -497,48 +506,50 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
       children: [
         // Action & Date Bar
         Container(
-          padding: const EdgeInsets.all(12),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Row(
-                children: [
-                  TextButton.icon(
-                    icon: const Icon(Icons.event, color: Color(0xFF45632D)),
-                    label: Text(
-                      dateFormat.format(scheduleState.selectedDate),
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1D2619)),
-                    ),
-                    onPressed: () async {
-                      final d = await showDatePicker(
-                        context: context,
-                        initialDate: scheduleState.selectedDate,
-                        firstDate: DateTime(2025),
-                        lastDate: DateTime(2030),
-                      );
-                      if (d != null) ref.read(scheduleProvider.notifier).changeDate(d);
-                    },
-                  ),
-                ],
+              TextButton.icon(
+                icon: const Icon(Icons.event, color: Color(0xFF45632D), size: 20),
+                label: Text(
+                  dateFormat.format(scheduleState.selectedDate),
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1D2619), fontSize: 13),
+                ),
+                onPressed: () async {
+                  final d = await showDatePicker(
+                    context: context,
+                    initialDate: scheduleState.selectedDate,
+                    firstDate: DateTime(2025),
+                    lastDate: DateTime(2030),
+                  );
+                  if (d != null) ref.read(scheduleProvider.notifier).changeDate(d);
+                },
               ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
                     icon: const Icon(Icons.refresh),
                     tooltip: 'تحديث',
                     onPressed: () => ref.read(scheduleProvider.notifier).loadAppointments(),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   ElevatedButton.icon(
-                    icon: const Icon(Icons.add),
-                    label: const Text('حجز موعد جديد'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('حجز موعد جديد', style: TextStyle(fontSize: 13)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF45632D),
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
                     onPressed: _showNewAppointmentDialog,
                   ),
@@ -612,11 +623,16 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -627,52 +643,55 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                       ),
                       child: Text(
                         appt.timeFormatted,
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF45632D)),
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF45632D), fontSize: 12),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          appt.patientName,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        if (appt.patientMrn != null)
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            appt.patientMrn!,
-                            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                            appt.patientName,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                           ),
-                      ],
+                          if (appt.patientMrn != null)
+                            Text(
+                              appt.patientMrn!,
+                              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                            ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
                 Chip(
                   label: Text(statusText, style: const TextStyle(fontSize: 11, color: Colors.white)),
                   backgroundColor: statusColor,
+                  visualDensity: VisualDensity.compact,
                 ),
               ],
             ),
             const Divider(height: 20),
             // Attendance Action Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 OutlinedButton.icon(
                   icon: const Icon(Icons.check, size: 16, color: Colors.teal),
-                  label: const Text('تسجيل وصول', style: TextStyle(color: Colors.teal)),
+                  label: const Text('تسجيل وصول', style: TextStyle(color: Colors.teal, fontSize: 12)),
                   onPressed: () => _updateAppointmentStatus(appt.id, 'confirmed'),
                 ),
-                const SizedBox(width: 8),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.person_off, size: 16, color: Colors.orange),
-                  label: const Text('غائب', style: TextStyle(color: Colors.orange)),
+                  label: const Text('غائب', style: TextStyle(color: Colors.orange, fontSize: 12)),
                   onPressed: () => _updateAppointmentStatus(appt.id, 'no_show'),
                 ),
-                const SizedBox(width: 8),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.close, size: 16, color: Colors.red),
-                  label: const Text('إلغاء', style: TextStyle(color: Colors.red)),
+                  label: const Text('إلغاء', style: TextStyle(color: Colors.red, fontSize: 12)),
                   onPressed: () => _updateAppointmentStatus(appt.id, 'cancelled'),
                 ),
               ],
@@ -684,6 +703,7 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
   }
 
   Widget _buildPatientsTab(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < 520;
     return Column(
       children: [
         // Search & Add Bar
@@ -696,7 +716,7 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                 child: TextField(
                   controller: _patientSearchController,
                   decoration: InputDecoration(
-                    hintText: 'ابحث بالاسم، رقم الهاتف، أو كود الملف MRN...',
+                    hintText: 'ابحث بالاسم، الهاتف، أو MRN...',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.clear),
@@ -711,14 +731,14 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                   onSubmitted: _loadPatients,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
-                icon: const Icon(Icons.person_add),
-                label: const Text('مريض جديد'),
+                icon: const Icon(Icons.person_add, size: 18),
+                label: Text(isMobile ? 'إضافة' : 'مريض جديد'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF45632D),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: 14),
                 ),
                 onPressed: () async {
                   await Navigator.push(
@@ -783,9 +803,11 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'طلبات الحجز الواردة من موقع العيادة الإلكتروني',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              const Expanded(
+                child: Text(
+                  'طلبات الحجز الواردة من موقع العيادة الإلكتروني',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.refresh),
@@ -822,8 +844,11 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                Wrap(
+                                  alignment: WrapAlignment.spaceBetween,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 4,
                                   children: [
                                     Text(
                                       req['name'] ?? '',
@@ -837,6 +862,7 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                                       backgroundColor: isPending
                                           ? Colors.amber.shade800
                                           : (status == 'matched' ? Colors.teal : Colors.red),
+                                      visualDensity: VisualDensity.compact,
                                     ),
                                   ],
                                 ),
@@ -852,15 +878,16 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
 
                                 if (isPending) ...[
                                   const Divider(height: 18),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
+                                  Wrap(
+                                    alignment: WrapAlignment.end,
+                                    spacing: 8,
+                                    runSpacing: 8,
                                     children: [
                                       OutlinedButton.icon(
                                         icon: const Icon(Icons.close, size: 16, color: Colors.red),
                                         label: const Text('رفض الطلب', style: TextStyle(color: Colors.red)),
                                         onPressed: () => _rejectBookingRequest(req['request_id']),
                                       ),
-                                      const SizedBox(width: 8),
                                       ElevatedButton.icon(
                                         icon: const Icon(Icons.check, size: 16),
                                         label: const Text('مطابقة مع ملف مريض'),

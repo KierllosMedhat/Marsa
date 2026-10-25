@@ -297,17 +297,23 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
       );
     }
 
+    final isMobile = MediaQuery.sizeOf(context).width < 680;
+
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: isMobile ? 8 : 16,
         title: Row(
           children: [
-            const Icon(Icons.psychology, size: 26),
-            const SizedBox(width: 8),
-            Text(
-              'جلسة: ${session.patientName}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            const Icon(Icons.psychology, size: 22),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'جلسة: ${session.patientName}',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 15 : 18),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            if (session.patientMrn != null) ...[
+            if (!isMobile && session.patientMrn != null) ...[
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -321,11 +327,11 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
                 ),
               ),
             ],
-            const SizedBox(width: 16),
+            SizedBox(width: isMobile ? 6 : 16),
 
             // Draft vs Finalized Status Pill
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 10, vertical: 4),
               decoration: BoxDecoration(
                 color: session.isFinalized ? Colors.teal.shade700 : Colors.amber.shade800,
                 borderRadius: BorderRadius.circular(12),
@@ -335,12 +341,14 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
                 children: [
                   Icon(
                     session.isFinalized ? Icons.lock : Icons.edit,
-                    size: 13,
+                    size: 12,
                     color: Colors.white,
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    session.isFinalized ? 'معتمدة ومقفلة' : 'مسودة قيد التحرير',
+                    isMobile
+                        ? (session.isFinalized ? 'معتمدة' : 'مسودة')
+                        : (session.isFinalized ? 'معتمدة ومقفلة' : 'مسودة قيد التحرير'),
                     style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -349,8 +357,8 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
           ],
         ),
         actions: [
-          // Auto-save notification text
-          if (sessionState.lastSavedMessage != null)
+          // Auto-save notification text (desktop/tablet)
+          if (!isMobile && sessionState.lastSavedMessage != null)
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -375,48 +383,62 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
               ),
             ),
 
-          // Save draft button
           if (!session.isFinalized) ...[
-            OutlinedButton.icon(
-              icon: const Icon(Icons.save_outlined, size: 18, color: Colors.white),
-              label: const Text('حفظ كمسودة', style: TextStyle(color: Colors.white)),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.white60),
+            if (isMobile) ...[
+              IconButton(
+                icon: const Icon(Icons.save_outlined),
+                tooltip: 'حفظ كمسودة',
+                onPressed: () {
+                  _syncTypedNotes();
+                  ref.read(clinicalSessionProvider.notifier).autoSaveDraft();
+                },
               ),
-              onPressed: () {
-                _syncTypedNotes();
-                ref.read(clinicalSessionProvider.notifier).autoSaveDraft();
-              },
-            ),
-            const SizedBox(width: 8),
-
-            // Finalize session button
-            ElevatedButton.icon(
-              icon: const Icon(Icons.lock, size: 18),
-              label: const Text('اعتماد وقفل الجلسة'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal.shade800,
-                foregroundColor: Colors.white,
+              IconButton(
+                icon: const Icon(Icons.lock),
+                tooltip: 'اعتماد وقفل الجلسة',
+                onPressed: _confirmFinalizeSession,
               ),
-              onPressed: _confirmFinalizeSession,
-            ),
+            ] else ...[
+              OutlinedButton.icon(
+                icon: const Icon(Icons.save_outlined, size: 18, color: Colors.white),
+                label: const Text('حفظ كمسودة', style: TextStyle(color: Colors.white)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white60),
+                ),
+                onPressed: () {
+                  _syncTypedNotes();
+                  ref.read(clinicalSessionProvider.notifier).autoSaveDraft();
+                },
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.lock, size: 18),
+                label: const Text('اعتماد وقفل الجلسة'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal.shade800,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: _confirmFinalizeSession,
+              ),
+            ],
           ],
-          const SizedBox(width: 12),
+          SizedBox(width: isMobile ? 4 : 12),
         ],
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: isMobile,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.amber,
           indicatorWeight: 3,
-          tabs: const [
+          tabs: [
             Tab(
-              icon: Icon(Icons.edit_note),
-              text: 'الملاحظات المطبوعة وفحص الحالة (MSE & Typed)',
+              icon: const Icon(Icons.edit_note),
+              text: isMobile ? 'الملاحظات وفحص الحالة (MSE)' : 'الملاحظات المطبوعة وفحص الحالة (MSE & Typed)',
             ),
             Tab(
-              icon: Icon(Icons.draw),
-              text: 'لوحة خط اليد بقلم Huawei M-Pencil',
+              icon: const Icon(Icons.draw),
+              text: isMobile ? 'لوحة خط اليد (M-Pencil)' : 'لوحة خط اليد بقلم Huawei M-Pencil',
             ),
           ],
         ),
@@ -436,8 +458,9 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
   }
 
   Widget _buildTypedNotesWorkspace(ClinicalSession session) {
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 12 : 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -449,23 +472,29 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.assignment_turned_in, color: Color(0xFF1B4F72)),
                           SizedBox(width: 8),
-                          Text(
-                            'التشخيصات الإكلينيكية المسجلة للجلسة',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          Flexible(
+                            child: Text(
+                              'التشخيصات الإكلينيكية للجلسة',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
                           ),
                         ],
                       ),
                       if (!session.isFinalized)
                         OutlinedButton.icon(
                           icon: const Icon(Icons.add, size: 16),
-                          label: const Text('إضافة تشخيص'),
+                          label: const Text('إضافة تشخيص', style: TextStyle(fontSize: 13)),
                           onPressed: _showAddDiagnosisDialog,
                         ),
                     ],
@@ -536,69 +565,119 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1B4F72)),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _sleepController,
-                          enabled: !session.isFinalized,
-                          decoration: const InputDecoration(
-                            labelText: 'النوم (Sleep)',
-                            hintText: 'ساعات النوم، الأرق، الكوابيس',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.bedtime_outlined),
-                          ),
-                          onChanged: (_) => _syncTypedNotes(),
-                        ),
+                  if (isMobile) ...[
+                    TextField(
+                      controller: _sleepController,
+                      enabled: !session.isFinalized,
+                      decoration: const InputDecoration(
+                        labelText: 'النوم (Sleep)',
+                        hintText: 'ساعات النوم، الأرق، الكوابيس',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.bedtime_outlined),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _appetiteController,
-                          enabled: !session.isFinalized,
-                          decoration: const InputDecoration(
-                            labelText: 'الشهية (Appetite)',
-                            hintText: 'طبيعية، منخفضة، شراهة',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.restaurant_outlined),
-                          ),
-                          onChanged: (_) => _syncTypedNotes(),
-                        ),
+                      onChanged: (_) => _syncTypedNotes(),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _appetiteController,
+                      enabled: !session.isFinalized,
+                      decoration: const InputDecoration(
+                        labelText: 'الشهية (Appetite)',
+                        hintText: 'طبيعية، منخفضة، شراهة',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.restaurant_outlined),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _moodController,
-                          enabled: !session.isFinalized,
-                          decoration: const InputDecoration(
-                            labelText: 'المزاج (Mood)',
-                            hintText: 'اكتئابي، قلق، منبسط، متقلب',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.sentiment_neutral_outlined),
-                          ),
-                          onChanged: (_) => _syncTypedNotes(),
-                        ),
+                      onChanged: (_) => _syncTypedNotes(),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _moodController,
+                      enabled: !session.isFinalized,
+                      decoration: const InputDecoration(
+                        labelText: 'المزاج (Mood)',
+                        hintText: 'اكتئابي، قلق، منبسط، متقلب',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.sentiment_neutral_outlined),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _anxietyController,
-                          enabled: !session.isFinalized,
-                          decoration: const InputDecoration(
-                            labelText: 'القلق والتوتر (Anxiety)',
-                            hintText: 'توتر عام، نوبات هلع، أفكار ملحة',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.psychology_alt_outlined),
-                          ),
-                          onChanged: (_) => _syncTypedNotes(),
-                        ),
+                      onChanged: (_) => _syncTypedNotes(),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _anxietyController,
+                      enabled: !session.isFinalized,
+                      decoration: const InputDecoration(
+                        labelText: 'القلق والتوتر (Anxiety)',
+                        hintText: 'توتر عام، نوبات هلع، أفكار ملحة',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.psychology_alt_outlined),
                       ),
-                    ],
-                  ),
+                      onChanged: (_) => _syncTypedNotes(),
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _sleepController,
+                            enabled: !session.isFinalized,
+                            decoration: const InputDecoration(
+                              labelText: 'النوم (Sleep)',
+                              hintText: 'ساعات النوم، الأرق، الكوابيس',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.bedtime_outlined),
+                            ),
+                            onChanged: (_) => _syncTypedNotes(),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _appetiteController,
+                            enabled: !session.isFinalized,
+                            decoration: const InputDecoration(
+                              labelText: 'الشهية (Appetite)',
+                              hintText: 'طبيعية، منخفضة، شراهة',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.restaurant_outlined),
+                            ),
+                            onChanged: (_) => _syncTypedNotes(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _moodController,
+                            enabled: !session.isFinalized,
+                            decoration: const InputDecoration(
+                              labelText: 'المزاج (Mood)',
+                              hintText: 'اكتئابي، قلق، منبسط، متقلب',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.sentiment_neutral_outlined),
+                            ),
+                            onChanged: (_) => _syncTypedNotes(),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _anxietyController,
+                            enabled: !session.isFinalized,
+                            decoration: const InputDecoration(
+                              labelText: 'القلق والتوتر (Anxiety)',
+                              hintText: 'توتر عام، نوبات هلع، أفكار ملحة',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.psychology_alt_outlined),
+                            ),
+                            onChanged: (_) => _syncTypedNotes(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -731,23 +810,29 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.medication_liquid, color: Color(0xFF1B4F72)),
                           SizedBox(width: 8),
-                          Text(
-                            'الوصفة الدوائية (الروشتة الصادرة عن الجلسة)',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          Flexible(
+                            child: Text(
+                              'الوصفة الدوائية (الروشتة)',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
                           ),
                         ],
                       ),
                       if (!session.isFinalized)
                         ElevatedButton.icon(
                           icon: const Icon(Icons.add, size: 16),
-                          label: const Text('إضافة دواء للروشتة'),
+                          label: const Text('إضافة دواء للروشتة', style: TextStyle(fontSize: 13)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1B4F72),
                             foregroundColor: Colors.white,

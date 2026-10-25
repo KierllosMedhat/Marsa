@@ -27,68 +27,81 @@ class DoctorDashboardScreen extends ConsumerWidget {
       }
     }();
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isMobile = screenWidth < 680;
+
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: isMobile ? 8 : 16,
         title: Row(
           children: [
             ClipOval(
               child: Image.asset(
                 'assets/images/logo.jpg',
-                width: 32,
-                height: 32,
+                width: 30,
+                height: 30,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.psychology, size: 24),
+                errorBuilder: (_, __, ___) => const Icon(Icons.psychology, size: 22),
               ),
             ),
-            const SizedBox(width: 10),
-            const Text(
-              'عيادة مرساة',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            const SizedBox(width: 8),
+            const Flexible(
+              child: Text(
+                'عيادة مرساة',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 8),
             // Connection/Sync Status Badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: scheduleState.isOffline
-                    ? Colors.amber.shade800
-                    : Colors.teal.shade700,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    scheduleState.isOffline
-                        ? Icons.cloud_off_rounded
-                        : Icons.cloud_done_rounded,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    scheduleState.isOffline ? 'وضع التابلت المحلي' : 'متصل بالخادم المركزي',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
+            Tooltip(
+              message: scheduleState.isOffline ? 'وضع التابلت المحلي' : 'متصل بالخادم المركزي',
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: scheduleState.isOffline
+                      ? Colors.amber.shade800
+                      : Colors.teal.shade700,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      scheduleState.isOffline
+                          ? Icons.cloud_off_rounded
+                          : Icons.cloud_done_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                    if (!isMobile) ...[
+                      const SizedBox(width: 5),
+                      Text(
+                        scheduleState.isOffline ? 'وضع التابلت المحلي' : 'متصل بالخادم المركزي',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],
         ),
         actions: [
-          // Doctor Info Chip
-          Chip(
-            avatar: const CircleAvatar(
-              backgroundColor: Colors.white24,
-              child: Icon(Icons.person, size: 16, color: Colors.white),
+          if (!isMobile) ...[
+            Chip(
+              avatar: const CircleAvatar(
+                backgroundColor: Colors.white24,
+                child: Icon(Icons.person, size: 16, color: Colors.white),
+              ),
+              label: Text(
+                authState.user?.nameAr ?? 'د. مارينا نبيه نمر',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              backgroundColor: theme.primaryColorDark,
             ),
-            label: Text(
-              authState.user?.nameAr ?? 'د. مارينا نبيه نمر',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-            backgroundColor: theme.primaryColorDark,
-          ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
           IconButton(
             icon: const Icon(Icons.search),
             tooltip: 'البحث في سجلات المرضى',
@@ -114,14 +127,14 @@ class DoctorDashboardScreen extends ConsumerWidget {
             tooltip: 'تسجيل الخروج',
             onPressed: () => ref.read(authProvider.notifier).logout(),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: isMobile ? 4 : 12),
         ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isNarrow = constraints.maxWidth < 860;
           final calendarWidget = Card(
-            margin: EdgeInsets.all(isNarrow ? 12 : 16),
+            margin: EdgeInsets.all(isNarrow ? 0 : 16),
             elevation: 2,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: Padding(
@@ -173,26 +186,50 @@ class DoctorDashboardScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  calendarWidget,
+                  // Collapsible Calendar & Quick Stats on Mobile
+                  Card(
+                    elevation: 1.5,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Theme(
+                      data: theme.copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        leading: Icon(Icons.calendar_month, color: theme.primaryColor),
+                        title: Text(
+                          dateFormat.format(scheduleState.selectedDate),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        subtitle: Text(
+                          'إجمالي: ${scheduleState.appointments.length} | مؤكدة: ${scheduleState.appointments.where((a) => a.isConfirmed).length} | مكتملة: ${scheduleState.appointments.where((a) => a.isCompleted).length}',
+                          style: TextStyle(fontSize: 12, color: Colors.teal.shade800),
+                        ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            child: CalendarDatePicker(
+                              initialDate: scheduleState.selectedDate,
+                              firstDate: DateTime(2025),
+                              lastDate: DateTime(2030),
+                              onDateChanged: (newDate) {
+                                ref.read(scheduleProvider.notifier).changeDate(newDate);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'جدول المواعيد والجلسات',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.primaryColor,
-                            ),
+                      Expanded(
+                        child: Text(
+                          'جدول المواعيد والجلسات (${scheduleState.appointments.length})',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.primaryColor,
                           ),
-                          Text(
-                            dateFormat.format(scheduleState.selectedDate),
-                            style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                          ),
-                        ],
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.refresh),
@@ -201,7 +238,7 @@ class DoctorDashboardScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   if (scheduleState.isLoading)
                     const Padding(
                       padding: EdgeInsets.all(32),
@@ -342,166 +379,208 @@ class DoctorDashboardScreen extends ConsumerWidget {
     final timeFormat = DateFormat('hh:mm a', 'ar');
     final startTime = timeFormat.format(apt.slotStart);
     final endTime = timeFormat.format(apt.slotEnd);
+    final isMobileCard = MediaQuery.sizeOf(context).width < 640;
+
+    final timeBadge = Container(
+      padding: EdgeInsets.symmetric(horizontal: isMobileCard ? 10 : 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B4F72).withAlpha(20),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF1B4F72).withAlpha(50)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            apt.dateFormatted,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1B4F72),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            startTime,
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobileCard ? 13 : 15),
+          ),
+          Text(
+            endTime,
+            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+
+    final patientInfo = Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                apt.patientName,
+                style: TextStyle(
+                  fontSize: isMobileCard ? 15 : 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (apt.patientMrn != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey.shade100,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    apt.patientMrn!,
+                    style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade800),
+                  ),
+                ),
+              // Status Chip
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: apt.isConfirmed ? Colors.teal.shade50 : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: apt.isConfirmed ? Colors.teal.shade300 : Colors.grey.shade300,
+                  ),
+                ),
+                child: Text(
+                  apt.isConfirmed ? 'مؤكد' : apt.status,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: apt.isConfirmed ? Colors.teal.shade800 : Colors.grey.shade700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            apt.typeName,
+            style: const TextStyle(
+              color: Color(0xFF2E86AB),
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+          if (apt.notes != null && apt.notes!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              apt.notes!,
+              style: TextStyle(color: Colors.grey[700], fontSize: 12),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+    );
+
+    void openProfile() {
+      if (apt.patientId != null) {
+        ref.read(patientProvider.notifier).selectPatient(apt.patientId!);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PatientDetailScreen(patientId: apt.patientId!),
+          ),
+        );
+      }
+    }
+
+    void startSession() {
+      ref.read(clinicalSessionProvider.notifier).startNewSession(
+            patientId: apt.patientId ?? 'pat-unknown',
+            patientName: apt.patientName,
+            patientMrn: apt.patientMrn,
+          );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const SessionWorkspaceScreen(),
+        ),
+      );
+    }
 
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            // Time Badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B4F72).withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF1B4F72).withAlpha(50)),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    apt.dateFormatted,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1B4F72),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    startTime,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                  Text(
-                    endTime,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-
-            // Patient Info & Type
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        padding: EdgeInsets.all(isMobileCard ? 12.0 : 16.0),
+        child: isMobileCard
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        apt.patientName,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
+                      timeBadge,
+                      const SizedBox(width: 12),
+                      patientInfo,
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.folder_shared_outlined, size: 17),
+                          label: const Text('الملف الطبي', style: TextStyle(fontSize: 13)),
+                          onPressed: openProfile,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      if (apt.patientMrn != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.blueGrey.shade100,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            apt.patientMrn!,
-                            style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade800),
-                          ),
-                        ),
                       const SizedBox(width: 8),
-                      // Status Chip
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: apt.isConfirmed ? Colors.teal.shade50 : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: apt.isConfirmed ? Colors.teal.shade300 : Colors.grey.shade300,
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.edit_note, size: 18),
+                          label: const Text('بدء الجلسة', style: TextStyle(fontSize: 13)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1B4F72),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
-                        ),
-                        child: Text(
-                          apt.isConfirmed ? 'مؤكد' : apt.status,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: apt.isConfirmed ? Colors.teal.shade800 : Colors.grey.shade700,
-                          ),
+                          onPressed: startSession,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    apt.typeName,
-                    style: TextStyle(
-                      color: const Color(0xFF2E86AB),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
+                ],
+              )
+            : Row(
+                children: [
+                  timeBadge,
+                  const SizedBox(width: 16),
+                  patientInfo,
+                  const SizedBox(width: 12),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.folder_shared_outlined, size: 18),
+                        label: const Text('الملف الطبي'),
+                        onPressed: openProfile,
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.edit_note, size: 20),
+                        label: const Text('بدء الجلسة السريرية'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B4F72),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        onPressed: startSession,
+                      ),
+                    ],
                   ),
-                  if (apt.notes != null && apt.notes!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      apt.notes!,
-                      style: TextStyle(color: Colors.grey[700], fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
                 ],
               ),
-            ),
-
-            // Action Buttons
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // View Patient Profile
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.folder_shared_outlined, size: 18),
-                  label: const Text('الملف الطبي'),
-                  onPressed: () {
-                    if (apt.patientId != null) {
-                      ref.read(patientProvider.notifier).selectPatient(apt.patientId!);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PatientDetailScreen(patientId: apt.patientId!),
-                        ),
-                      );
-                    }
-                  },
-                ),
-                const SizedBox(width: 8),
-
-                // Start Session
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.edit_note, size: 20),
-                  label: const Text('بدء الجلسة السريرية'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B4F72),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                  onPressed: () {
-                    ref.read(clinicalSessionProvider.notifier).startNewSession(
-                          patientId: apt.patientId ?? 'pat-unknown',
-                          patientName: apt.patientName,
-                          patientMrn: apt.patientMrn,
-                        );
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const SessionWorkspaceScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

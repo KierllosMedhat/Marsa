@@ -88,19 +88,20 @@ class _PatientCreateScreenState extends ConsumerState<PatientCreateScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(patientProvider);
     final theme = Theme.of(context);
+    final isMobile = MediaQuery.sizeOf(context).width < 520;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تسجيل مريض جديد في العيادة')),
+      appBar: AppBar(title: const Text('تسجيل مريض جديد')),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isMobile ? 12 : 24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
             child: Card(
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -172,50 +173,87 @@ class _PatientCreateScreenState extends ConsumerState<PatientCreateScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // DOB and Sex Row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              icon: const Icon(Icons.calendar_today),
-                              label: Text(
-                                _selectedDob == null
-                                    ? 'تاريخ الميلاد'
-                                    : DateFormat('yyyy/MM/dd').format(_selectedDob!),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                              ),
-                              onPressed: () async {
-                                final d = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime(1995),
-                                  firstDate: DateTime(1920),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (d != null) setState(() => _selectedDob = d);
-                              },
-                            ),
+                      // DOB and Sex
+                      if (isMobile) ...[
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_today),
+                          label: Text(
+                            _selectedDob == null
+                                ? 'تاريخ الميلاد'
+                                : DateFormat('yyyy/MM/dd').format(_selectedDob!),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedSex,
-                              decoration: const InputDecoration(
-                                labelText: 'النوع',
-                                border: OutlineInputBorder(),
-                              ),
-                              items: const [
-                                DropdownMenuItem(value: 'male', child: Text('ذكر')),
-                                DropdownMenuItem(value: 'female', child: Text('أنثى')),
-                              ],
-                              onChanged: (v) {
-                                if (v != null) setState(() => _selectedSex = v);
-                              },
-                            ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                        ],
-                      ),
+                          onPressed: () async {
+                            final d = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime(1995),
+                              firstDate: DateTime(1920),
+                              lastDate: DateTime.now(),
+                            );
+                            if (d != null) setState(() => _selectedDob = d);
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _selectedSex,
+                          decoration: const InputDecoration(
+                            labelText: 'النوع',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'male', child: Text('ذكر')),
+                            DropdownMenuItem(value: 'female', child: Text('أنثى')),
+                          ],
+                          onChanged: (v) {
+                            if (v != null) setState(() => _selectedSex = v);
+                          },
+                        ),
+                      ] else
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.calendar_today),
+                                label: Text(
+                                  _selectedDob == null
+                                      ? 'تاريخ الميلاد'
+                                      : DateFormat('yyyy/MM/dd').format(_selectedDob!),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                ),
+                                onPressed: () async {
+                                  final d = await showDatePicker(
+                                    context: context,
+                                    initialDate: DateTime(1995),
+                                    firstDate: DateTime(1920),
+                                    lastDate: DateTime.now(),
+                                  );
+                                  if (d != null) setState(() => _selectedDob = d);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedSex,
+                                decoration: const InputDecoration(
+                                  labelText: 'النوع',
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(value: 'male', child: Text('ذكر')),
+                                  DropdownMenuItem(value: 'female', child: Text('أنثى')),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) setState(() => _selectedSex = v);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       const SizedBox(height: 28),
 
                       ElevatedButton(

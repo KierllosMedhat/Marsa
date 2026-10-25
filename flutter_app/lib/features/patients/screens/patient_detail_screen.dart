@@ -28,11 +28,17 @@ class PatientDetailScreen extends ConsumerWidget {
       );
     }
 
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
+
     return DefaultTabController(
       length: 6,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('الملف النفسي والطبي — ${patient.nameAr}'),
+          title: Text(
+            'الملف الطبي — ${patient.nameAr}',
+            style: TextStyle(fontSize: isMobile ? 16 : 18, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.edit_outlined),
@@ -60,192 +66,249 @@ class PatientDetailScreen extends ConsumerWidget {
           children: [
             // Patient Header Info Strip
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(isMobile ? 12 : 16),
               color: Colors.white,
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: theme.primaryColor.withAlpha(25),
-                    child: Icon(Icons.person, size: 38, color: theme.primaryColor),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: isMobile ? 22 : 30,
+                        backgroundColor: theme.primaryColor.withAlpha(25),
+                        child: Icon(Icons.person, size: isMobile ? 26 : 38, color: theme.primaryColor),
+                      ),
+                      SizedBox(width: isMobile ? 10 : 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              patient.nameAr,
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                            ),
-                            if (patient.nameEn != null && patient.nameEn!.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              Text(
-                                '(${patient.nameEn})',
-                                style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic, fontSize: 13),
-                              ),
-                            ],
-                            const SizedBox(width: 10),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.blueGrey.shade100,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                patient.mrn,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blueGrey.shade900,
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  patient.nameAr,
+                                  style: TextStyle(fontSize: isMobile ? 16 : 20, fontWeight: FontWeight.bold),
                                 ),
-                              ),
+                                if (patient.nameEn != null && patient.nameEn!.isNotEmpty)
+                                  Text(
+                                    '(${patient.nameEn})',
+                                    style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic, fontSize: 12),
+                                  ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blueGrey.shade100,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    patient.mrn,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blueGrey.shade900,
+                                    ),
+                                  ),
+                                ),
+                                if (patient.sex != null)
+                                  Text(
+                                    '• ${patient.sex == 'male' ? 'ذكر' : 'أنثى'}',
+                                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                                  ),
+                                if (patient.age != null)
+                                  Text(
+                                    '• ${patient.age} سنة',
+                                    style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1B4F72), fontSize: 13),
+                                  ),
+                                if (patient.maritalStatus != null && patient.maritalStatus!.isNotEmpty)
+                                  Text(
+                                    '• ${patient.maritalStatus}',
+                                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                                  ),
+                              ],
                             ),
-                            if (patient.sex != null) ...[
-                              const SizedBox(width: 8),
-                              Text(
-                                '• ${patient.sex == 'male' ? 'ذكر' : 'أنثى'}',
-                                style: TextStyle(color: Colors.grey[700]),
-                              ),
-                            ],
-                            if (patient.age != null) ...[
-                              const SizedBox(width: 8),
-                              Text(
-                                '• ${patient.age} سنة',
-                                style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1B4F72)),
-                              ),
-                            ],
-                            if (patient.maritalStatus != null && patient.maritalStatus!.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              Text(
-                                '• ${patient.maritalStatus}',
-                                style: TextStyle(color: Colors.grey[700]),
-                              ),
-                            ],
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 14,
+                              runSpacing: 4,
+                              children: [
+                                if (patient.phone != null && patient.phone!.isNotEmpty)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.phone, size: 14, color: Colors.grey[600]),
+                                      const SizedBox(width: 4),
+                                      Text(patient.phone!, style: TextStyle(color: Colors.grey[700], fontSize: 12.5)),
+                                    ],
+                                  ),
+                                if (patient.occupation != null && patient.occupation!.isNotEmpty)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.work_outline, size: 14, color: Colors.grey[600]),
+                                      const SizedBox(width: 4),
+                                      Text(patient.occupation!, style: TextStyle(color: Colors.grey[700], fontSize: 12.5)),
+                                    ],
+                                  ),
+                                if (patient.children != null && patient.children!.isNotEmpty)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.child_care_outlined, size: 14, color: Colors.grey[600]),
+                                      const SizedBox(width: 4),
+                                      Text('الأبناء: ${patient.children}', style: TextStyle(color: Colors.grey[700], fontSize: 12.5)),
+                                    ],
+                                  ),
+                                if (patient.address != null && patient.address!.isNotEmpty)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[600]),
+                                      const SizedBox(width: 4),
+                                      Text(patient.address!, style: TextStyle(color: Colors.grey[700], fontSize: 12.5)),
+                                    ],
+                                  ),
+                                if (patient.firstSessionDate != null)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.event_available, size: 14, color: Colors.teal.shade700),
+                                      const SizedBox(width: 4),
+                                      Text('أول جلسة: ${DateFormat('yyyy/MM/dd').format(patient.firstSessionDate!)}',
+                                          style: TextStyle(color: Colors.teal.shade800, fontSize: 12, fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                              ],
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 16,
-                          runSpacing: 4,
+                      ),
+                      if (!isMobile) ...[
+                        if (patient.allergies.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 20),
+                                const SizedBox(width: 6),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'حساسية دوائية مسجلة:',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade900),
+                                    ),
+                                    Text(
+                                      patient.allergies.join('، '),
+                                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.red.shade800),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.edit, size: 16),
+                          label: const Text('تعديل البيانات'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          ),
+                          onPressed: () => _showEditDemographicsDialog(context, ref, patient),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.edit_note),
+                          label: const Text('بدء جلسة جديدة'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                          ),
+                          onPressed: () {
+                            ref.read(clinicalSessionProvider.notifier).startNewSession(
+                                  patientId: patient.patientId,
+                                  patientName: patient.nameAr,
+                                  patientMrn: patient.mrn,
+                                );
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SessionWorkspaceScreen()),
+                            );
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (isMobile) ...[
+                    if (patient.allergies.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade300),
+                        ),
+                        child: Row(
                           children: [
-                            if (patient.phone != null && patient.phone!.isNotEmpty)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.phone, size: 14, color: Colors.grey[600]),
-                                  const SizedBox(width: 4),
-                                  Text(patient.phone!, style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                                ],
+                            Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 18),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'حساسية دوائية: ${patient.allergies.join('، ')}',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red.shade900),
                               ),
-                            if (patient.occupation != null && patient.occupation!.isNotEmpty)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.work_outline, size: 14, color: Colors.grey[600]),
-                                  const SizedBox(width: 4),
-                                  Text(patient.occupation!, style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                                ],
-                              ),
-                            if (patient.children != null && patient.children!.isNotEmpty)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.child_care_outlined, size: 14, color: Colors.grey[600]),
-                                  const SizedBox(width: 4),
-                                  Text('الأبناء: ${patient.children}', style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                                ],
-                              ),
-                            if (patient.address != null && patient.address!.isNotEmpty)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[600]),
-                                  const SizedBox(width: 4),
-                                  Text(patient.address!, style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                                ],
-                              ),
-                            if (patient.firstSessionDate != null)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.event_available, size: 14, color: Colors.teal.shade700),
-                                  const SizedBox(width: 4),
-                                  Text('أول جلسة: ${DateFormat('yyyy/MM/dd').format(patient.firstSessionDate!)}',
-                                      style: TextStyle(color: Colors.teal.shade800, fontSize: 12, fontWeight: FontWeight.w600)),
-                                ],
-                              ),
+                            ),
                           ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.edit, size: 16),
+                            label: const Text('تعديل البيانات', style: TextStyle(fontSize: 12.5)),
+                            onPressed: () => _showEditDemographicsDialog(context, ref, patient),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.edit_note, size: 18),
+                            label: const Text('بدء جلسة جديدة', style: TextStyle(fontSize: 12.5)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.primaryColor,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () {
+                              ref.read(clinicalSessionProvider.notifier).startNewSession(
+                                    patientId: patient.patientId,
+                                    patientName: patient.nameAr,
+                                    patientMrn: patient.mrn,
+                                  );
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const SessionWorkspaceScreen()),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
-                  ),
-
-                  // Allergies Alert Warning
-                  if (patient.allergies.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade300),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 20),
-                          const SizedBox(width: 6),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'حساسية دوائية مسجلة:',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade900),
-                              ),
-                              Text(
-                                patient.allergies.join('، '),
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.red.shade800),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(width: 16),
-
-                  // Edit Demographics Button
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.edit, size: 16),
-                    label: const Text('تعديل البيانات'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    ),
-                    onPressed: () => _showEditDemographicsDialog(context, ref, patient),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Start Session Button
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.edit_note),
-                    label: const Text('بدء جلسة جديدة لهذا المريض'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    ),
-                    onPressed: () {
-                      ref.read(clinicalSessionProvider.notifier).startNewSession(
-                            patientId: patient.patientId,
-                            patientName: patient.nameAr,
-                            patientMrn: patient.mrn,
-                          );
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SessionWorkspaceScreen()),
-                      );
-                    },
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -275,25 +338,29 @@ class PatientDetailScreen extends ConsumerWidget {
   // ==========================================
 
   Widget _buildHistoryTab(BuildContext context, WidgetRef ref, PatientModel patient) {
+    final isMobile = MediaQuery.sizeOf(context).width < 640;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 12 : 20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               const Text(
                 'الملف والفحص الإكلينيكي النفسي الكامل',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               ElevatedButton.icon(
-                icon: const Icon(Icons.edit_note, size: 20),
-                label: const Text('تعديل التاريخ السريري والفحوصات'),
+                icon: const Icon(Icons.edit_note, size: 18),
+                label: const Text('تعديل التاريخ السريري', style: TextStyle(fontSize: 13)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1B4F72),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 ),
                 onPressed: () => _showEditClinicalHistoryDialog(context, ref, patient),
               ),
@@ -325,29 +392,45 @@ class PatientDetailScreen extends ConsumerWidget {
             isAlert: patient.riskAssessment != null && patient.riskAssessment!.toLowerCase().contains('high'),
           ),
           const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _buildClinicalSectionCard(
-                  title: 'محاولات الانتحار السابقة (Suicide Attempts)',
-                  icon: Icons.emergency_outlined,
-                  content: patient.suicideAttempts ?? 'لا توجد محاولات مسجلة.',
-                  isAlert: patient.suicideAttempts != null &&
-                      patient.suicideAttempts!.isNotEmpty &&
-                      !patient.suicideAttempts!.contains('لا'),
+          if (isMobile) ...[
+            _buildClinicalSectionCard(
+              title: 'محاولات الانتحار السابقة (Suicide Attempts)',
+              icon: Icons.emergency_outlined,
+              content: patient.suicideAttempts ?? 'لا توجد محاولات مسجلة.',
+              isAlert: patient.suicideAttempts != null &&
+                  patient.suicideAttempts!.isNotEmpty &&
+                  !patient.suicideAttempts!.contains('لا'),
+            ),
+            const SizedBox(height: 14),
+            _buildClinicalSectionCard(
+              title: 'الحجز والدخول السابق (Admitted Before)',
+              icon: Icons.local_hospital_outlined,
+              content: patient.admittedBefore ?? 'لا يوجد دخول سابق لمستشفيات.',
+            ),
+          ] else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _buildClinicalSectionCard(
+                    title: 'محاولات الانتحار السابقة (Suicide Attempts)',
+                    icon: Icons.emergency_outlined,
+                    content: patient.suicideAttempts ?? 'لا توجد محاولات مسجلة.',
+                    isAlert: patient.suicideAttempts != null &&
+                        patient.suicideAttempts!.isNotEmpty &&
+                        !patient.suicideAttempts!.contains('لا'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _buildClinicalSectionCard(
-                  title: 'الحجز والدخول السابق (Admitted Before)',
-                  icon: Icons.local_hospital_outlined,
-                  content: patient.admittedBefore ?? 'لا يوجد دخول سابق لمستشفيات.',
+                const SizedBox(width: 14),
+                Expanded(
+                  child: _buildClinicalSectionCard(
+                    title: 'الحجز والدخول السابق (Admitted Before)',
+                    icon: Icons.local_hospital_outlined,
+                    content: patient.admittedBefore ?? 'لا يوجد دخول سابق لمستشفيات.',
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 14),
           _buildClinicalSectionCard(
             title: 'التاريخ الطبي والجراحي (Medical & Surgical History)',
@@ -405,15 +488,18 @@ class PatientDetailScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(icon, size: 20, color: isAlert ? Colors.red.shade700 : const Color(0xFF1B4F72)),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: isAlert ? Colors.red.shade900 : const Color(0xFF1B4F72),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14.5,
+                      color: isAlert ? Colors.red.shade900 : const Color(0xFF1B4F72),
+                    ),
                   ),
                 ),
               ],
@@ -441,22 +527,24 @@ class PatientDetailScreen extends ConsumerWidget {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           color: Colors.grey.shade50,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'التشخيصات المسجلة (${patient.diagnoses.length})',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  'التشخيصات المسجلة (${patient.diagnoses.length})',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
               ElevatedButton.icon(
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('إضافة تشخيص جديد'),
+                label: const Text('إضافة تشخيص', style: TextStyle(fontSize: 13)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal.shade700,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 onPressed: () => _showAddDiagnosisDialog(context, ref, patient),
               ),
@@ -538,22 +626,24 @@ class PatientDetailScreen extends ConsumerWidget {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           color: Colors.grey.shade50,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'الخطة الدوائية الحالية (${patient.medications.length})',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  'الخطة الدوائية الحالية (${patient.medications.length})',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
               ElevatedButton.icon(
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('إضافة دواء للخطة'),
+                label: const Text('إضافة دواء', style: TextStyle(fontSize: 13)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigo.shade700,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 onPressed: () => _showAddMedicationDialog(context, ref, patient),
               ),
@@ -581,7 +671,7 @@ class PatientDetailScreen extends ConsumerWidget {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   itemCount: patient.medications.length,
                   itemBuilder: (ctx, idx) {
                     final m = patient.medications[idx];
@@ -593,8 +683,10 @@ class PatientDetailScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              spacing: 8,
+                              runSpacing: 4,
                               children: [
                                 Text(
                                   m.nameAr,
@@ -647,7 +739,7 @@ class PatientDetailScreen extends ConsumerWidget {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       itemCount: patient.sessionHistory.length,
       itemBuilder: (ctx, idx) {
         final s = patient.sessionHistory[idx];
@@ -659,16 +751,20 @@ class PatientDetailScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     Text(
                       'جلسة ${s.sessionNumber ?? '#${idx + 1}'}: ${DateFormat('yyyy/MM/dd — hh:mm a', 'ar').format(s.startedAt)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
                     ),
                     Chip(
-                      label: Text(s.status == 'finalized' ? 'معتمدة نهائياً' : 'مسودة'),
+                      label: Text(s.status == 'finalized' ? 'معتمدة نهائياً' : 'مسودة', style: const TextStyle(fontSize: 12)),
                       backgroundColor: s.status == 'finalized' ? Colors.blue.shade50 : Colors.amber.shade50,
+                      visualDensity: VisualDensity.compact,
                     ),
                   ],
                 ),
@@ -707,22 +803,24 @@ class PatientDetailScreen extends ConsumerWidget {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           color: Colors.grey.shade50,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'الملفات والتقارير المرفقة (${patient.files.length})',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  'الملفات والتقارير المرفقة (${patient.files.length})',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
               ElevatedButton.icon(
                 icon: const Icon(Icons.upload_file, size: 18),
-                label: const Text('إرفاق ملف جديد'),
+                label: const Text('إرفاق ملف', style: TextStyle(fontSize: 13)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueGrey.shade800,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 onPressed: () => _showAddFileDialog(context, ref, patient),
               ),
@@ -750,7 +848,7 @@ class PatientDetailScreen extends ConsumerWidget {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   itemCount: patient.files.length,
                   itemBuilder: (ctx, idx) {
                     final f = patient.files[idx];
@@ -799,22 +897,24 @@ class PatientDetailScreen extends ConsumerWidget {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           color: Colors.grey.shade50,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'ملاحظات الطبيب السريعة (${patient.quickNotes.length})',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  'ملاحظات الطبيب السريعة (${patient.quickNotes.length})',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
               ElevatedButton.icon(
                 icon: const Icon(Icons.note_add, size: 18),
-                label: const Text('إضافة ملاحظة سريعة'),
+                label: const Text('إضافة ملاحظة', style: TextStyle(fontSize: 13)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1B4F72),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 onPressed: () => _showAddNoteDialog(context, ref, patient),
               ),

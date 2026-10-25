@@ -42,14 +42,14 @@ class _PatientSearchScreenState extends ConsumerState<PatientSearchScreen> {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 12.0 : 20.0),
         child: Column(
           children: [
             // Search Input
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'ابحث بالاسم العربي، رقم الملف (MRN)، أو رقم الهاتف...',
+                hintText: 'ابحث بالاسم، رقم الملف (MRN)، أو الهاتف...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -111,13 +111,15 @@ class _PatientSearchScreenState extends ConsumerState<PatientSearchScreen> {
                                   backgroundColor: theme.primaryColor.withAlpha(30),
                                   child: Icon(Icons.person, color: theme.primaryColor),
                                 ),
-                                title: Row(
+                                title: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     Text(
                                       patient.nameAr,
                                       style: const TextStyle(fontWeight: FontWeight.bold),
                                     ),
-                                    const SizedBox(width: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(

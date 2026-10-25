@@ -77,10 +77,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isMobile = screenWidth < 600;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('مرساة — بوابة الكادر الطبي والاستقبال'),
+        title: Text(
+          isMobile ? 'عيادة مرساة — بوابة الدخول' : 'مرساة — بوابة الكادر الطبي والاستقبال',
+          style: TextStyle(fontSize: isMobile ? 16 : 18, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_ethernet),
@@ -91,14 +96,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32.0),
+          padding: EdgeInsets.all(isMobile ? 14.0 : 32.0),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: Card(
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
-                padding: const EdgeInsets.all(32.0),
+                padding: EdgeInsets.all(isMobile ? 18.0 : 32.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
