@@ -26,10 +26,18 @@ class AppointmentItem {
   bool get isConfirmed => status == 'confirmed';
   bool get isCompleted => status == 'completed';
   String get id => appointmentId;
+  String get dateFormatted {
+    final year = slotStart.year.toString();
+    final month = slotStart.month.toString().padLeft(2, '0');
+    final day = slotStart.day.toString().padLeft(2, '0');
+    return '$year/$month/$day';
+  }
   String get timeFormatted {
+    final month = slotStart.month.toString().padLeft(2, '0');
+    final day = slotStart.day.toString().padLeft(2, '0');
     final hour = slotStart.hour.toString().padLeft(2, '0');
     final minute = slotStart.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+    return '$month/$day — $hour:$minute';
   }
 
   factory AppointmentItem.fromJson(Map<String, dynamic> json) {

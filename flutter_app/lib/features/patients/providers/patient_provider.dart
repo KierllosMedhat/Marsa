@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/patient_model.dart';
 
 class PatientState {
@@ -36,6 +37,7 @@ class PatientState {
 
 final patientProvider = StateNotifierProvider<PatientNotifier, PatientState>((ref) {
   final apiClient = ref.read(apiClientProvider);
+  ref.watch(authProvider.select((s) => s.isAuthenticated));
   return PatientNotifier(apiClient);
 });
 

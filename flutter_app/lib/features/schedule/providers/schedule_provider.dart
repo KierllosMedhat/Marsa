@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/appointment_item.dart';
 
 class ScheduleState {
@@ -36,6 +37,7 @@ class ScheduleState {
 
 final scheduleProvider = StateNotifierProvider<ScheduleNotifier, ScheduleState>((ref) {
   final apiClient = ref.read(apiClientProvider);
+  ref.watch(authProvider.select((s) => s.isAuthenticated));
   return ScheduleNotifier(apiClient);
 });
 

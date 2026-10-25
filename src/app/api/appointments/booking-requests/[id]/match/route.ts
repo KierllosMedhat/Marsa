@@ -21,25 +21,36 @@ export async function POST(
     booking.matching_patient_id = body.patient_id;
     booking.status = 'matched';
 
-    // Also automatically schedule a confirmed appointment if preferred_slot exists
     const nowIso = new Date().toISOString();
-    const slotStart = booking.preferred_slot
-      ? new Date(booking.preferred_slot).toISOString()
-      : nowIso;
-    const slotEnd = new Date(new Date(slotStart).getTime() + 45 * 60 * 1000).toISOString();
+    const existingAppt = db.appointments.find(
+      (a) => a.booking_request_id === booking.request_id
+    );
 
-    db.appointments.push({
-      appointment_id: crypto.randomUUID(),
-      patient_id: body.patient_id,
-      booking_request_id: booking.request_id,
-      type_id: booking.type_id,
-      slot_start: slotStart,
-      slot_end: slotEnd,
-      status: 'confirmed',
-      notes: booking.notes || 'موعد معتمد من طلبات الموقع الإلكتروني',
-      created_at: nowIso,
-      updated_at: nowIso,
-    });
+    if (existingAppt) {
+      existingAppt.patient_id = body.patient_id;
+      existingAppt.status = 'confirmed';
+      existingAppt.updated_at = nowIso;
+    } else {
+      const slotStart = booking.preferred_slot
+        ? new Date(booking.preferred_slot).toISOString()
+        : nowIso;
+      const slotEnd = new Date(
+        new Date(slotStart).getTime() + 45 * 60 * 1000
+      ).toISOString();
+
+      db.appointments.push({
+        appointment_id: crypto.randomUUID(),
+        patient_id: body.patient_id,
+        booking_request_id: booking.request_id,
+        type_id: booking.type_id,
+        slot_start: slotStart,
+        slot_end: slotEnd,
+        status: 'confirmed',
+        notes: booking.notes || 'موعد معتمد من طلبات الموقع الإلكتروني',
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+    }
 
     saveDb(db);
     return NextResponse.json(booking);

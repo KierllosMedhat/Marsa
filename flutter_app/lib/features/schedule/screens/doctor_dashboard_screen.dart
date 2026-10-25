@@ -361,6 +361,15 @@ class DoctorDashboardScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   Text(
+                    apt.dateFormatted,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1B4F72),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
                     startTime,
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),

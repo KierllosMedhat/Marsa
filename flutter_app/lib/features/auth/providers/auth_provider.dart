@@ -59,10 +59,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     if (token != null && savedUser != null) {
       _apiClient.setTokens(accessToken: token);
-      state = state.copyWith(
-        isAuthenticated: true,
-        user: StaffUser.fromJson(savedUser),
-      );
+      final meRes = await _apiClient.get('/auth/me');
+      if (meRes.isSuccess && meRes.data != null) {
+        final verifiedUser = StaffUser.fromJson(meRes.data!);
+        state = state.copyWith(
+          isAuthenticated: true,
+          user: verifiedUser,
+        );
+      } else if (meRes.statusCode == 401 || meRes.statusCode == 403) {
+        _apiClient.clearTokens();
+        await _localStore.clearAuth();
+        state = AuthState();
+      } else {
+        state = state.copyWith(
+          isAuthenticated: true,
+          user: StaffUser.fromJson(savedUser),
+        );
+      }
     }
   }
 

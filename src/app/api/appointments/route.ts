@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { AppointmentRecord, getDb, saveDb } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 function enrichAppointment(appt: AppointmentRecord) {
   const db = getDb();
   const patient = appt.patient_id
@@ -23,12 +25,23 @@ export async function GET(req: NextRequest) {
   const auth = requireAuth(req);
   if ('error' in auth) return auth.error;
 
+  const dateFilter = req.nextUrl.searchParams.get('date')?.trim();
   const db = getDb();
-  const sorted = [...db.appointments].sort((a, b) =>
-    a.slot_start.localeCompare(b.slot_start)
-  );
 
-  return NextResponse.json(sorted.map(enrichAppointment));
+  const allAppointments = [...db.appointments];
+
+  // Sort: appointments matching selected date first, then newest/upcoming website bookings
+  allAppointments.sort((a, b) => {
+    if (dateFilter) {
+      const aMatches = a.slot_start.slice(0, 10) === dateFilter;
+      const bMatches = b.slot_start.slice(0, 10) === dateFilter;
+      if (aMatches && !bMatches) return -1;
+      if (!aMatches && bMatches) return 1;
+    }
+    return b.created_at.localeCompare(a.created_at);
+  });
+
+  return NextResponse.json(allAppointments.map(enrichAppointment));
 }
 
 export async function POST(req: NextRequest) {
@@ -39,7 +52,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const db = getDb();
 
-    const typeObj = db.appointment_types.find((t) => t.type_id === body.type_id);
+    const typeObj =
+      db.appointment_types.find((t) => t.type_id === body.type_id) ||
+      db.appointment_types[0];
     if (!typeObj) {
       return NextResponse.json(
         { detail: 'Appointment type not found' },
@@ -52,7 +67,7 @@ export async function POST(req: NextRequest) {
       appointment_id: crypto.randomUUID(),
       patient_id: body.patient_id || null,
       booking_request_id: body.booking_request_id || null,
-      type_id: body.type_id,
+      type_id: typeObj.type_id,
       slot_start: body.slot_start,
       slot_end: body.slot_end,
       status: body.patient_id ? 'confirmed' : 'available',
@@ -61,11 +76,14 @@ export async function POST(req: NextRequest) {
       updated_at: nowIso,
     };
 
-    db.appointments.push(appt);
+    db.appointments.unshift(appt);
     saveDb(db);
 
     return NextResponse.json(enrichAppointment(appt), { status: 201 });
   } catch {
-    return NextResponse.json({ detail: 'Invalid appointment payload' }, { status: 400 });
+    return NextResponse.json(
+      { detail: 'Invalid appointment payload' },
+      { status: 400 }
+    );
   }
 }

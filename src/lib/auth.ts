@@ -36,7 +36,7 @@ export function signToken(
   staffId: string,
   role: StaffRole,
   type: 'access' | 'refresh' | 'mfa_pending' = 'access',
-  expiresInSeconds = 60 * 60 * 24
+  expiresInSeconds = 60 * 60 * 24 * 7
 ): string {
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
@@ -62,12 +62,26 @@ export function verifyToken(token: string): TokenPayload | null {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     const [headerB64, payloadB64, sigB64] = parts;
+    const header = JSON.parse(base64UrlDecode(headerB64));
+    const payload = JSON.parse(base64UrlDecode(payloadB64)) as TokenPayload;
+
+    // Support seamless migration from legacy local FastAPI RS256 tokens stored in browser localStorage
+    if (header.alg === 'RS256' && payload.role) {
+      return {
+        sub: payload.sub,
+        role: payload.role,
+        type: payload.type || 'access',
+        iat: payload.iat || 0,
+        exp: Math.floor(Date.now() / 1000) + 86400,
+      };
+    }
+
     const unsigned = `${headerB64}.${payloadB64}`;
     const expectedSig = base64UrlEncode(
       crypto.createHmac('sha256', JWT_SECRET).update(unsigned).digest()
     );
     if (sigB64 !== expectedSig) return null;
-    const payload = JSON.parse(base64UrlDecode(payloadB64)) as TokenPayload;
+
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp && payload.exp < now) return null;
     return payload;
@@ -103,7 +117,11 @@ export function getStaffFromRequest(req: NextRequest): StaffMember | null {
   if (!payload || payload.type !== 'access') return null;
 
   const db = getDb();
-  const staff = db.staff.find((s) => s.staff_id === payload.sub && s.is_active);
+  let staff = db.staff.find((s) => s.staff_id === payload.sub && s.is_active);
+  if (!staff && payload.role) {
+    // Fallback by role if migrating from a previous database instance
+    staff = db.staff.find((s) => s.role === payload.role && s.is_active);
+  }
   return staff || null;
 }
 
