@@ -58,6 +58,21 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
     _planController = TextEditingController(text: session?.treatmentPlan ?? '');
     _followUpController = TextEditingController(text: session?.followUp ?? '');
     _generalNotesController = TextEditingController(text: session?.generalNotesTyped ?? '');
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final rawInk = session?.inkStrokeJson;
+      if (rawInk != null && rawInk.trim().isNotEmpty) {
+        final notebook = StrokeSerializer.notebookFromJson(rawInk);
+        ref.read(canvasProvider.notifier).loadStrokes(
+              notebook.strokes,
+              template: notebook.paperTemplate,
+              theme: notebook.paperTheme,
+            );
+      } else {
+        ref.read(canvasProvider.notifier).loadStrokes(const []);
+      }
+    });
   }
 
   @override
@@ -895,43 +910,118 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
     );
   }
 
+  void _autoPersistHandwriting() {
+    final canvasState = ref.read(canvasProvider);
+    final jsonStr = StrokeSerializer.strokesToJson(
+      canvasState.strokes,
+      paperTemplate: canvasState.paperTemplate,
+      paperTheme: canvasState.paperTheme,
+    );
+    ref.read(clinicalSessionProvider.notifier).setHandwritingInk(jsonStr);
+    StrokeSerializer.saveStrokes(
+      canvasState.strokes,
+      paperTemplate: canvasState.paperTemplate,
+      paperTheme: canvasState.paperTheme,
+    );
+  }
+
   Widget _buildHandwritingWorkspace() {
+    final canvasState = ref.watch(canvasProvider);
+
     return Stack(
       children: [
-        // Full Ink Canvas
-        const Positioned.fill(
+        // 1. Full-screen Huawei Notes PaperMatte Canvas
+        Positioned.fill(
           child: InkCanvas(
-            backgroundColor: Color(0xFFF9F7F2), // PaperMatte background feel
+            onStrokeCompleted: _autoPersistHandwriting,
           ),
         ),
 
-        // Vertical Floating Toolbar for Huawei M-Pencil
+        // 2. Live M-Pencil 4096-Pressure & Tilt Telemetry HUD (when enabled in M-Pencil settings)
+        if (canvasState.showDebugOverlay)
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Container(
+              width: 240,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xDD1E293B),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF38BDF8).withAlpha(110)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'حساس قلم Huawei M-Pencil',
+                    style: TextStyle(
+                      color: Color(0xFF38BDF8),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'المصدر: ${canvasState.lastDeviceKind}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                  Text(
+                    'الضغط (4096): ${(canvasState.lastPressure * 4096).round()} / 4096 (${canvasState.lastPressure.toStringAsFixed(3)})',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                  Text(
+                    'زاوية الميل (Tilt): ${canvasState.lastTiltDegrees.toStringAsFixed(1)}°',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                  Text(
+                    'القلم الحالي: ${canvasState.activeBrush.labelAr}',
+                    style: const TextStyle(color: Colors.amberAccent, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // 3. Top Floating Huawei Notes Dock & Popovers
         Positioned(
-          top: 16,
-          right: 16,
-          bottom: 16,
-          child: ToolBar(
-            onSave: () async {
-              final strokes = ref.read(canvasProvider).strokes;
-              final jsonStr = StrokeSerializer.strokesToJson(strokes);
-              ref.read(clinicalSessionProvider.notifier).setHandwritingInk(jsonStr);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم حفظ خطوط الملاحظات اليدوية في سجل الجلسة')),
-                );
-              }
-            },
-            onLoad: () async {
-              final saved = await StrokeSerializer.loadStrokes();
-              if (saved != null) {
-                ref.read(canvasProvider.notifier).loadStrokes(saved);
+          top: 10,
+          left: 0,
+          right: 0,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ToolBar(
+              onSave: () async {
+                _autoPersistHandwriting();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم استرجاع الملاحظات اليدوية السابقة')),
+                    const SnackBar(
+                      content: Text(
+                        'تم حفظ دفتر ملاحظات Huawei M-Pencil في سجل الجلسة السريرية',
+                      ),
+                    ),
                   );
                 }
-              }
-            },
+              },
+              onLoad: () async {
+                final saved = await StrokeSerializer.loadNotebook();
+                if (saved != null) {
+                  ref.read(canvasProvider.notifier).loadStrokes(
+                        saved.strokes,
+                        template: saved.paperTemplate,
+                        theme: saved.paperTheme,
+                      );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('تم استرجاع دفتر الملاحظات اليدوية المحفوظ'),
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
           ),
         ),
       ],
