@@ -181,10 +181,23 @@ async function main() {
       for (const targetRel of [
         path.join('web', 'public', 'ota-bundle'),
         path.join('public', 'ota-bundle'),
+        path.join('app', 'build', 'web'),
       ]) {
         const dest = path.join(ROOT_DIR, targetRel);
         fs.mkdirSync(dest, { recursive: true });
         fs.cpSync(webBuildOut, dest, { recursive: true, force: true });
+        if (targetRel.startsWith('app')) {
+          const idx = path.join(dest, 'index.html');
+          if (fs.existsSync(idx)) {
+            fs.writeFileSync(
+              idx,
+              fs
+                .readFileSync(idx, 'utf8')
+                .replace('href="/ota-bundle/"', 'href="/"'),
+              'utf8'
+            );
+          }
+        }
       }
       console.log(`   Copied Live Cloud OTA bundle to web/public/ota-bundle/`);
     }
