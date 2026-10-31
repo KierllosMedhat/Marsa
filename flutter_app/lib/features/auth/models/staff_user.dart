@@ -6,6 +6,7 @@ class StaffUser {
   final String email;
   final String? phone;
   final bool mfaEnabled;
+  final bool isActive;
 
   StaffUser({
     required this.staffId,
@@ -15,6 +16,7 @@ class StaffUser {
     required this.email,
     this.phone,
     required this.mfaEnabled,
+    this.isActive = true,
   });
 
   bool get isDoctor => role == 'doctor';
@@ -30,6 +32,7 @@ class StaffUser {
       email: json['email'] ?? '',
       phone: json['phone'],
       mfaEnabled: json['mfa_enabled'] ?? false,
+      isActive: json['is_active'] ?? true,
     );
   }
 
@@ -42,6 +45,7 @@ class StaffUser {
       'email': email,
       'phone': phone,
       'mfa_enabled': mfaEnabled,
+      'is_active': isActive,
     };
   }
 }

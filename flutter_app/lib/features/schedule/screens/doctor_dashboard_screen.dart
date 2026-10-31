@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/update/ota_update_dialog.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/screens/account_management_screen.dart';
 import '../models/appointment_item.dart';
 import '../providers/schedule_provider.dart';
 import '../../patients/screens/patient_search_screen.dart';
@@ -90,7 +91,7 @@ class DoctorDashboardScreen extends ConsumerWidget {
         ),
         actions: [
           if (!isMobile) ...[
-            Chip(
+            ActionChip(
               avatar: const CircleAvatar(
                 backgroundColor: Colors.white24,
                 child: Icon(Icons.person, size: 16, color: Colors.white),
@@ -100,6 +101,15 @@ class DoctorDashboardScreen extends ConsumerWidget {
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               backgroundColor: theme.primaryColorDark,
+              tooltip: 'إدارة الحسابات والمستخدمين',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AccountManagementScreen(),
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 8),
           ],
@@ -120,6 +130,18 @@ class DoctorDashboardScreen extends ConsumerWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const PatientCreateScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.manage_accounts),
+            tooltip: 'إدارة الحسابات والمستخدمين',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AccountManagementScreen(),
+                ),
               );
             },
           ),

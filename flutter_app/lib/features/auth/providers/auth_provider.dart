@@ -339,6 +339,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
+  Future<void> updateCurrentUser(StaffUser updatedUser) async {
+    final token = await _localStore.getAccessToken();
+    final refreshToken = await _localStore.getRefreshToken();
+    if (token != null) {
+      await _localStore.saveAuth(
+        accessToken: token,
+        refreshToken: refreshToken ?? '',
+        staffUser: updatedUser.toJson(),
+      );
+    }
+    state = state.copyWith(user: updatedUser);
+  }
+
   Future<void> logout() async {
     try {
       if (_apiClient.accessToken != null &&

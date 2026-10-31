@@ -1,8 +1,8 @@
 /// Auto-synchronized application version constants.
 /// Updated automatically by `scripts/publish_ota.mjs` / `publish_update.bat`.
 class AppVersionConstants {
-  static const String currentVersion = '1.2.4';
-  static const int currentBuildNumber = 7;
+  static const String currentVersion = '1.2.5';
+  static const int currentBuildNumber = 8;
   static const String channel = 'stable';
 
   static const String defaultLiveWebBundleUrl =

@@ -621,8 +621,8 @@ module.exports = async function handler(req, res) {
       'no-store, no-cache, must-revalidate, proxy-revalidate'
     );
     const defaultManifest = {
-      version: '1.2.4',
-      buildNumber: 7,
+      version: '1.2.5',
+      buildNumber: 8,
       releasedAt: '2026-10-27T23:15:00.000Z',
       mandatory: false,
       minSupportedBuild: 1,
@@ -718,6 +718,12 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    if (staff.is_active === false) {
+      return sendJson(res, 403, {
+        detail: 'هذا الحساب موقوف حالياً — يرجى مراجعة الطبيب مدير العيادة',
+      });
+    }
+
     const accessToken = signToken(staff.staff_id, staff.role, 'access', 604800);
     const refreshToken = signToken(
       staff.staff_id,
@@ -770,6 +776,133 @@ module.exports = async function handler(req, res) {
   if (pathname === '/auth/logout' && method === 'POST') {
     res.statusCode = 204;
     return res.end();
+  }
+
+  // 5b. Staff & Account Management (/staff and /staff/:id) — Doctor/Admin only
+  if (pathname === '/staff') {
+    const currentStaff = getStaffFromRequest(req);
+    if (!currentStaff) {
+      return sendJson(res, 401, { detail: 'يرجى تسجيل الدخول أولاً' });
+    }
+    if (currentStaff.role !== 'doctor' && currentStaff.role !== 'admin') {
+      return sendJson(res, 403, {
+        detail: 'إدارة الحسابات والمستخدمين مقصورة على الطبيب مدير العيادة فقط',
+      });
+    }
+
+    if (method === 'GET') {
+      return sendJson(res, 200, db.staff.map(formatStaffUser));
+    }
+
+    if (method === 'POST') {
+      const body = await parseBody(req);
+      const nameAr = String(body.name_ar || '').trim();
+      const email = String(body.email || '').trim().toLowerCase();
+      const password = String(body.password || '').trim();
+      const role = body.role === 'doctor' ? 'doctor' : 'receptionist';
+
+      if (!nameAr || !email || !password) {
+        return sendJson(res, 422, {
+          detail: 'يرجى إدخال الاسم، البريد الإلكتروني (أو اسم المستخدم)، وكلمة المرور.',
+        });
+      }
+
+      const duplicate = db.staff.find(
+        (s) => s.email.toLowerCase() === email
+      );
+      if (duplicate) {
+        return sendJson(res, 409, {
+          detail: 'البريد الإلكتروني أو اسم المستخدم مسجل بالفعل لحساب آخر.',
+        });
+      }
+
+      const nowIso = new Date().toISOString();
+      const newStaff = {
+        staff_id: crypto.randomUUID(),
+        role,
+        name_ar: nameAr,
+        name_en: body.name_en ? String(body.name_en).trim() : null,
+        email,
+        phone: body.phone ? String(body.phone).trim() : null,
+        password_hash: hashPwd(password),
+        mfa_enabled: false,
+        is_active: body.is_active !== false,
+        created_at: nowIso,
+      };
+      db.staff.push(newStaff);
+      saveDb(db);
+      return sendJson(res, 201, formatStaffUser(newStaff));
+    }
+  }
+
+  const staffIdMatch = pathname.match(/^\/staff\/([^/]+)$/);
+  if (staffIdMatch) {
+    const currentStaff = getStaffFromRequest(req);
+    if (!currentStaff) {
+      return sendJson(res, 401, { detail: 'يرجى تسجيل الدخول أولاً' });
+    }
+    if (currentStaff.role !== 'doctor' && currentStaff.role !== 'admin') {
+      return sendJson(res, 403, {
+        detail: 'إدارة الحسابات والمستخدمين مقصورة على الطبيب مدير العيادة فقط',
+      });
+    }
+
+    const targetId = staffIdMatch[1];
+    const targetStaff = db.staff.find((s) => s.staff_id === targetId);
+    if (!targetStaff) {
+      return sendJson(res, 404, { detail: 'الحساب غير موجود' });
+    }
+
+    if (method === 'PUT' || method === 'PATCH') {
+      const body = await parseBody(req);
+      if (body.name_ar !== undefined && String(body.name_ar).trim()) {
+        targetStaff.name_ar = String(body.name_ar).trim();
+      }
+      if (body.name_en !== undefined) {
+        targetStaff.name_en = body.name_en ? String(body.name_en).trim() : null;
+      }
+      if (body.email !== undefined && String(body.email).trim()) {
+        const nextEmail = String(body.email).trim().toLowerCase();
+        const dup = db.staff.find(
+          (s) =>
+            s.staff_id !== targetId && s.email.toLowerCase() === nextEmail
+        );
+        if (dup) {
+          return sendJson(res, 409, {
+            detail: 'البريد الإلكتروني مستخدم بالفعل لحساب آخر.',
+          });
+        }
+        targetStaff.email = nextEmail;
+      }
+      if (body.phone !== undefined) {
+        targetStaff.phone = body.phone ? String(body.phone).trim() : null;
+      }
+      if (
+        body.role !== undefined &&
+        (body.role === 'doctor' || body.role === 'receptionist')
+      ) {
+        targetStaff.role = body.role;
+      }
+      if (body.is_active !== undefined && targetId !== currentStaff.staff_id) {
+        targetStaff.is_active = Boolean(body.is_active);
+      }
+      if (body.password !== undefined && String(body.password).trim().length > 0) {
+        targetStaff.password_hash = hashPwd(String(body.password).trim());
+      }
+      saveDb(db);
+      return sendJson(res, 200, formatStaffUser(targetStaff));
+    }
+
+    if (method === 'DELETE') {
+      if (targetId === currentStaff.staff_id) {
+        return sendJson(res, 400, {
+          detail: 'لا يمكنك حذف حسابك الشخصي الحالي أثناء تسجيل الدخول.',
+        });
+      }
+      db.staff = db.staff.filter((s) => s.staff_id !== targetId);
+      saveDb(db);
+      return sendJson(res, 200, { status: 'deleted', staff_id: targetId });
+    }
   }
 
   // 6. GET / POST /appointments/types

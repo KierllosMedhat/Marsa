@@ -13,8 +13,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController(text: 'doctor@marsa.clinic');
-  final _passwordController = TextEditingController(text: 'DoctorPass123!');
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _totpController = TextEditingController();
   bool _obscurePassword = true;
   String _selectedRole = 'doctor';
@@ -31,13 +31,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ref.read(authProvider.notifier).clearError();
     setState(() {
       _selectedRole = role;
-      if (role == 'receptionist') {
-        _emailController.text = 'receptionist@marsa.clinic';
-        _passwordController.text = 'ReceptionPass123!';
-      } else {
-        _emailController.text = 'doctor@marsa.clinic';
-        _passwordController.text = 'DoctorPass123!';
-      }
     });
   }
 

@@ -84,6 +84,10 @@ void main() {
       expect(find.text('دخول الاستقبال'), findsOneWidget);
       expect(find.text('طبيب (Offline)'), findsOneWidget);
       expect(find.text('استقبال (Offline)'), findsOneWidget);
+
+      // Verify username and password fields are empty by default
+      expect(find.text('doctor@marsa.clinic'), findsNothing);
+      expect(find.text('DoctorPass123!'), findsNothing);
     });
 
     testWidgets('HandwritingScreen renders Canvas and Toolbar',
