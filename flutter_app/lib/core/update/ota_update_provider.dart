@@ -76,14 +76,13 @@ class OtaUpdateNotifier extends StateNotifier<OtaUpdateState> {
               .invokeMapMethod<String, dynamic>('getAppVersionInfo');
           if (info != null) {
             version = (info['version'] as String?) ?? version;
-            final nativeBuild = (info['buildNumber'] as num?)?.toInt() ?? buildNum;
-            buildNum = nativeBuild > buildNum ? nativeBuild : buildNum;
+            final nativeBuild =
+                (info['buildNumber'] as num?)?.toInt() ?? buildNum;
+            buildNum = nativeBuild;
             canInstall = (info['canInstallPackages'] as bool?) ?? true;
           }
         } catch (_) {}
-      }
-
-      if (appliedOtaBuild > buildNum) {
+      } else if (appliedOtaBuild > buildNum) {
         buildNum = appliedOtaBuild;
       }
 

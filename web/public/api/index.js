@@ -600,8 +600,8 @@ module.exports = async function handler(req, res) {
       'no-store, no-cache, must-revalidate, proxy-revalidate'
     );
     const defaultManifest = {
-      version: '1.2.1',
-      buildNumber: 4,
+      version: '1.2.2',
+      buildNumber: 5,
       releasedAt: '2026-10-27T23:15:00.000Z',
       mandatory: false,
       minSupportedBuild: 1,

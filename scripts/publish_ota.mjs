@@ -208,6 +208,17 @@ async function main() {
         const rootApk = path.join(ROOT_DIR, 'Marsa-Clinic-Android.apk');
         fs.copyFileSync(builtApk, rootApk);
         console.log(`   Updated ${rootApk}`);
+
+        const webOtaApk = path.join(
+          ROOT_DIR,
+          'web',
+          'public',
+          'ota',
+          'Marsa-Clinic-Android.apk'
+        );
+        fs.mkdirSync(path.dirname(webOtaApk), { recursive: true });
+        fs.copyFileSync(builtApk, webOtaApk);
+        console.log(`   Copied APK to ${webOtaApk}`);
       }
     }
   }

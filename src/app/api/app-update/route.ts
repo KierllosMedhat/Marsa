@@ -5,8 +5,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 const DEFAULT_MANIFEST = {
-  version: '1.2.1',
-  buildNumber: 4,
+  version: '1.2.2',
+  buildNumber: 5,
   releasedAt: '2026-10-27T23:15:00.000Z',
   mandatory: false,
   minSupportedBuild: 1,

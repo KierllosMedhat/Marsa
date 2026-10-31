@@ -8,11 +8,13 @@
     <application
         android:label="Marsa Clinic"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:icon="@mipmap/ic_marsa_clinic"
+        android:roundIcon="@mipmap/ic_marsa_clinic_round"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
+            android:icon="@mipmap/ic_marsa_clinic"
+            android:roundIcon="@mipmap/ic_marsa_clinic_round"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""

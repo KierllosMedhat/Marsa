@@ -67,9 +67,12 @@ class OtaUpdateWrapper extends ConsumerWidget {
                               fontSize: 12.5,
                             ),
                           ),
-                          const Text(
-                            'يمكنك التحديث فورياً عبر السحابة بدون إعادة تثبيت APK يدوياً',
-                            style: TextStyle(
+                          Text(
+                            otaState.phase == OtaUpdatePhase.downloadingApk
+                                ? (otaState.statusMessageAr ??
+                                    'جاري تنزيل التحديث المباشر...')
+                                : 'اضغط "تحديث وتثبيت الآن" لترقية التطبيق وأيقونة الجهاز تلقائياً',
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 11,
                             ),
@@ -89,15 +92,34 @@ class OtaUpdateWrapper extends ConsumerWidget {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      onPressed: () {
-                        ref
-                            .read(otaUpdateProvider.notifier)
-                            .launchInstantCloudUpdate();
-                      },
-                      icon: const Icon(Icons.bolt_rounded, size: 15),
-                      label: const Text(
-                        'تحديث فوري',
-                        style: TextStyle(
+                      onPressed: otaState.phase == OtaUpdatePhase.downloadingApk
+                          ? null
+                          : () {
+                              if (!kIsWeb) {
+                                ref
+                                    .read(otaUpdateProvider.notifier)
+                                    .downloadAndInstallApk();
+                              } else {
+                                ref
+                                    .read(otaUpdateProvider.notifier)
+                                    .launchInstantCloudUpdate();
+                              }
+                            },
+                      icon: otaState.phase == OtaUpdatePhase.downloadingApk
+                          ? const SizedBox(
+                              width: 13,
+                              height: 13,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.system_update_rounded, size: 15),
+                      label: Text(
+                        otaState.phase == OtaUpdatePhase.downloadingApk
+                            ? '${(otaState.downloadProgress * 100).toStringAsFixed(0)}%'
+                            : 'تحديث وتثبيت الآن',
+                        style: const TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.bold,
                         ),
