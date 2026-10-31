@@ -2,7 +2,7 @@ name: Marsa OTA Auto-Release
 
 on:
   push:
-    branches: [main]
+    branches: [master, main]
     paths:
       - 'flutter_app/lib/**'
       - 'flutter_app/pubspec.yaml'

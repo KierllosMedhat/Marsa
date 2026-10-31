@@ -43,7 +43,7 @@ function readCurrentManifest() {
       'تحديث سحابي فوري للواجهات والميزات دون الحاجة لإعادة تثبيت APK يدوياً.',
     ],
     apkDownloadUrl:
-      'https://raw.githubusercontent.com/KierllosMedhat/Marsa/main/Marsa-Clinic-Android.apk',
+      'https://raw.githubusercontent.com/KierllosMedhat/Marsa/master/Marsa-Clinic-Android.apk',
     apkMirrorUrl: 'https://marsa-clinic-xi.vercel.app/ota/Marsa-Clinic-Android.apk',
     liveWebBundleUrl: 'https://marsa-clinic-xi.vercel.app/ota-bundle/index.html',
     remoteConfig: {
@@ -227,11 +227,13 @@ async function main() {
   if (autoPush) {
     console.log(`\n-> Committing and pushing OTA update to GitHub...`);
     execSync(`git add .`, { cwd: ROOT_DIR, stdio: 'inherit' });
-    execSync(
-      `git commit -m "chore(ota): publish online OTA update v${nextVersion} (build #${nextBuild})"`,
-      { cwd: ROOT_DIR, stdio: 'inherit' }
-    );
-    execSync(`git push origin main`, { cwd: ROOT_DIR, stdio: 'inherit' });
+    try {
+      execSync(
+        `git commit -m "chore(ota): publish online OTA update v${nextVersion} (build #${nextBuild})"`,
+        { cwd: ROOT_DIR, stdio: 'inherit' }
+      );
+    } catch (_) {}
+    execSync(`git push origin HEAD`, { cwd: ROOT_DIR, stdio: 'inherit' });
   }
 
   console.log(`\n✅ Online OTA Update v${nextVersion} (Build #${nextBuild}) is ready!`);

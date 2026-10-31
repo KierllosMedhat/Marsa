@@ -614,7 +614,7 @@ module.exports = async function handler(req, res) {
         'تحسين استجابة قلم Huawei M-Pencil ومزامنة الجلسات السريرية.',
       ],
       apkDownloadUrl:
-        'https://raw.githubusercontent.com/KierllosMedhat/Marsa/main/Marsa-Clinic-Android.apk',
+        'https://raw.githubusercontent.com/KierllosMedhat/Marsa/master/Marsa-Clinic-Android.apk',
       apkMirrorUrl:
         'https://marsa-clinic-xi.vercel.app/ota/Marsa-Clinic-Android.apk',
       liveWebBundleUrl:

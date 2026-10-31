@@ -8,11 +8,11 @@ class AppVersionConstants {
   static const String defaultLiveWebBundleUrl =
       'https://marsa-clinic-xi.vercel.app/ota-bundle/index.html';
   static const String defaultApkDownloadUrl =
-      'https://raw.githubusercontent.com/KierllosMedhat/Marsa/main/Marsa-Clinic-Android.apk';
+      'https://raw.githubusercontent.com/KierllosMedhat/Marsa/master/Marsa-Clinic-Android.apk';
   static const String defaultApkMirrorUrl =
       'https://marsa-clinic-xi.vercel.app/ota/Marsa-Clinic-Android.apk';
   static const String staticManifestVercelUrl =
       'https://marsa-clinic-xi.vercel.app/ota/version.json';
   static const String staticManifestGithubUrl =
-      'https://raw.githubusercontent.com/KierllosMedhat/Marsa/main/web/public/ota/version.json';
+      'https://raw.githubusercontent.com/KierllosMedhat/Marsa/master/web/public/ota/version.json';
 }

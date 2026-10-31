@@ -68,7 +68,7 @@ class AppUpdateManifest {
       titleAr: (json['titleAr'] as String?) ?? 'تحديث هوائي مباشر (OTA)',
       changelogAr: rawChangelog.map((e) => e.toString()).toList(),
       apkDownloadUrl: (json['apkDownloadUrl'] as String?) ??
-          'https://raw.githubusercontent.com/KierllosMedhat/Marsa/main/Marsa-Clinic-Android.apk',
+          'https://raw.githubusercontent.com/KierllosMedhat/Marsa/master/Marsa-Clinic-Android.apk',
       apkMirrorUrl: (json['apkMirrorUrl'] as String?) ??
           'https://marsa-clinic-xi.vercel.app/ota/Marsa-Clinic-Android.apk',
       liveWebBundleUrl: (json['liveWebBundleUrl'] as String?) ??

@@ -106642,7 +106642,7 @@ break}a2=!a4
 if(a2)n.saz(a1.axh(!0,B.OG,"\u062c\u0627\u0631\u064a \u0627\u0644\u0627\u062a\u0635\u0627\u0644 \u0628\u0627\u0644\u062e\u0627\u062f\u0645 \u0644\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u0627\u0644\u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0627\u0644\u0647\u0648\u0627\u0626\u064a\u0629..."))
 a1=n.r
 i=""+Date.now()
-h=[a1.a+"/app-update?t="+i,"https://marsa-clinic-xi.vercel.app/ota/version.json?t="+i,"https://raw.githubusercontent.com/KierllosMedhat/Marsa/main/web/public/ota/version.json?t="+i]
+h=[a1.a+"/app-update?t="+i,"https://marsa-clinic-xi.vercel.app/ota/version.json?t="+i,"https://raw.githubusercontent.com/KierllosMedhat/Marsa/master/web/public/ota/version.json?t="+i]
 m=null
 i=t.P,g=0
 case 3:if(!(g<3)){s=5

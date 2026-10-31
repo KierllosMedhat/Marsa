@@ -1,7 +1,7 @@
 {
   "version": "1.2.1",
   "buildNumber": 4,
-  "releasedAt": "2026-10-31T14:47:24.968Z",
+  "releasedAt": "2026-10-31T14:55:05.359Z",
   "mandatory": false,
   "minSupportedBuild": 1,
   "channel": "stable",
@@ -12,7 +12,7 @@
     "إضافة وضع المزامنة السحابية الفورية (Live Cloud OTA) لتشغيل أحدث التعديلات والواجهات لحظياً فور نشرها.",
     "دعم التنزيل والتثبيت المباشر من داخل التطبيق مع شريط تقدم وفحص سلامة الحزمة."
   ],
-  "apkDownloadUrl": "https://raw.githubusercontent.com/KierllosMedhat/Marsa/main/Marsa-Clinic-Android.apk",
+  "apkDownloadUrl": "https://raw.githubusercontent.com/KierllosMedhat/Marsa/master/Marsa-Clinic-Android.apk",
   "apkMirrorUrl": "https://marsa-clinic-xi.vercel.app/ota/Marsa-Clinic-Android.apk",
   "liveWebBundleUrl": "https://marsa-clinic-xi.vercel.app/ota-bundle/index.html",
   "remoteConfig": {
