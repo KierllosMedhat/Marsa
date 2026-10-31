@@ -587,8 +587,88 @@ module.exports = async function handler(req, res) {
       status: 'ok',
       db: true,
       redis: true,
+      appVersion: (db.app_update && db.app_update.version) || '1.2.0',
+      buildNumber: (db.app_update && db.app_update.buildNumber) || 3,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  // 1b. GET & POST /app-update (Online OTA App Update & Live Cloud Manifest)
+  if (pathname === '/app-update') {
+    res.setHeader(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, proxy-revalidate'
+    );
+    const defaultManifest = {
+      version: '1.2.1',
+      buildNumber: 4,
+      releasedAt: '2026-10-27T23:15:00.000Z',
+      mandatory: false,
+      minSupportedBuild: 1,
+      channel: 'stable',
+      titleAr: 'تحديث هوائي مباشر (OTA v1.2.0)',
+      changelogAr: [
+        'تفعيل نظام التحديث الهوائي التلقائي (OTA) دون الحاجة لإعادة تثبيت ملف APK يدوياً عند كل تعديل.',
+        'إضافة وضع المزامنة السحابية الفورية (Live Cloud OTA) لتشغيل أحدث التعديلات والواجهات لحظياً فور نشرها.',
+        'دعم التنزيل والتثبيت المباشر من داخل التطبيق مع شريط تقدم وفحص سلامة الحزمة.',
+        'تحسين استجابة قلم Huawei M-Pencil ومزامنة الجلسات السريرية.',
+      ],
+      apkDownloadUrl:
+        'https://raw.githubusercontent.com/KierllosMedhat/Marsa/main/Marsa-Clinic-Android.apk',
+      apkMirrorUrl:
+        'https://marsa-clinic-xi.vercel.app/ota/Marsa-Clinic-Android.apk',
+      liveWebBundleUrl:
+        'https://marsa-clinic-xi.vercel.app/ota-bundle/index.html',
+      remoteConfig: {
+        enableLiveCloudOta: true,
+        autoCheckOnStartup: true,
+        checkIntervalMinutes: 15,
+        clinicAnnouncementAr: null,
+        apiBaseUrlOverride: null,
+      },
+    };
+
+    let diskManifest = { ...defaultManifest };
+    try {
+      const versionFile = path.join(__dirname, '..', 'ota', 'version.json');
+      if (fs.existsSync(versionFile)) {
+        const parsed = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
+        diskManifest = { ...diskManifest, ...parsed };
+      }
+    } catch (_) {}
+
+    if (method === 'GET') {
+      const merged = db.app_update
+        ? {
+            ...diskManifest,
+            ...db.app_update,
+            remoteConfig: {
+              ...(diskManifest.remoteConfig || {}),
+              ...((db.app_update && db.app_update.remoteConfig) || {}),
+            },
+          }
+        : diskManifest;
+      return sendJson(res, 200, merged);
+    }
+
+    if (method === 'POST') {
+      const body = await parseBody(req);
+      const current = db.app_update
+        ? { ...diskManifest, ...db.app_update }
+        : diskManifest;
+      const updated = {
+        ...current,
+        ...body,
+        releasedAt: new Date().toISOString(),
+        remoteConfig: {
+          ...(current.remoteConfig || {}),
+          ...(body.remoteConfig || {}),
+        },
+      };
+      db.app_update = updated;
+      saveDb(db);
+      return sendJson(res, 200, { status: 'published', manifest: updated });
+    }
   }
 
   // 2. POST /auth/login

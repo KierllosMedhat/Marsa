@@ -1,12 +1,12 @@
 {
-    "name": "marsa_app",
-    "short_name": "marsa_app",
+    "name": "عيادة مرساة — Marsa Clinic",
+    "short_name": "Marsa Clinic",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#F7F7F7",
+    "theme_color": "#45632D",
+    "description": "مرساة — منصة العيادة النفسية الموحدة",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

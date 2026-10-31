@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/storage/local_store.dart';
+import '../../../core/update/ota_update_dialog.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -142,6 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
         actions: [
+          const OtaUpdateActionButton(),
           IconButton(
             icon: const Icon(Icons.settings_ethernet),
             tooltip: 'إعدادات عنوان الخادم',

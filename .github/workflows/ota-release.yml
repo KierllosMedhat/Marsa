@@ -1,0 +1,42 @@
+name: Marsa OTA Auto-Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'flutter_app/lib/**'
+      - 'flutter_app/pubspec.yaml'
+
+jobs:
+  build-ota:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Run Flutter Analyzer & Tests
+        working-directory: flutter_app
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Build Live Cloud OTA Bundle & Release APK
+        run: node scripts/publish_ota.mjs --no-bump

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/update/ota_update_dialog.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/appointment_item.dart';
 import '../providers/schedule_provider.dart';
@@ -122,6 +123,7 @@ class DoctorDashboardScreen extends ConsumerWidget {
               );
             },
           ),
+          const OtaUpdateActionButton(),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'تسجيل الخروج',

@@ -23,8 +23,8 @@ android {
         applicationId = "com.marsa.clinic"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 4
+        versionName = "1.2.1"
     }
 
     buildTypes {

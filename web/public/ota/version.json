@@ -1,0 +1,25 @@
+{
+  "version": "1.2.1",
+  "buildNumber": 4,
+  "releasedAt": "2026-10-31T14:47:24.968Z",
+  "mandatory": false,
+  "minSupportedBuild": 1,
+  "channel": "stable",
+  "titleAr": "تحديث هوائي مباشر (OTA v1.2.1)",
+  "changelogAr": [
+    "اعتماد شعار عيادة مرساة الرسمي كأيقونة للتطبيق على جميع المنصات",
+    "تفعيل نظام التحديث الهوائي التلقائي (OTA) دون الحاجة لإعادة تثبيت ملف APK يدوياً عند كل تعديل.",
+    "إضافة وضع المزامنة السحابية الفورية (Live Cloud OTA) لتشغيل أحدث التعديلات والواجهات لحظياً فور نشرها.",
+    "دعم التنزيل والتثبيت المباشر من داخل التطبيق مع شريط تقدم وفحص سلامة الحزمة."
+  ],
+  "apkDownloadUrl": "https://raw.githubusercontent.com/KierllosMedhat/Marsa/main/Marsa-Clinic-Android.apk",
+  "apkMirrorUrl": "https://marsa-clinic-xi.vercel.app/ota/Marsa-Clinic-Android.apk",
+  "liveWebBundleUrl": "https://marsa-clinic-xi.vercel.app/ota-bundle/index.html",
+  "remoteConfig": {
+    "enableLiveCloudOta": true,
+    "autoCheckOnStartup": true,
+    "checkIntervalMinutes": 15,
+    "clinicAnnouncementAr": null,
+    "apiBaseUrlOverride": null
+  }
+}

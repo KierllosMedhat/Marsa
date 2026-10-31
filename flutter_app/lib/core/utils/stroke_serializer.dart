@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/handwriting/models/ink_stroke.dart';
 
 /// Decoded Huawei Notes document bundle.
@@ -22,9 +23,13 @@ class SerializedNotebookData {
 /// and paper template settings to the local filesystem or clinical session JSON.
 class StrokeSerializer {
   static const String _fileName = 'marsa_ink_test.json';
+  static const String _webPrefsKey = 'marsa_ink_notebook_json_v2';
   static const int _formatVersion = 2;
 
   static Future<String> getFilePath() async {
+    if (kIsWeb) {
+      return 'localStorage://$_webPrefsKey';
+    }
     final appDocDir = await getApplicationDocumentsDirectory();
     return p.join(appDocDir.path, _fileName);
   }
@@ -36,6 +41,11 @@ class StrokeSerializer {
 
   static Future<bool> hasSavedStrokes() async {
     try {
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        final raw = prefs.getString(_webPrefsKey);
+        return raw != null && raw.trim().isNotEmpty;
+      }
       final file = await _getFile();
       return await file.exists();
     } catch (e) {
@@ -95,7 +105,6 @@ class StrokeSerializer {
     PaperColorTheme paperTheme = PaperColorTheme.paperMatteWarm,
   }) async {
     try {
-      final file = await _getFile();
       final data = {
         'version': _formatVersion,
         'saved_at': DateTime.now().toIso8601String(),
@@ -107,6 +116,12 @@ class StrokeSerializer {
       const encoder = JsonEncoder.withIndent('  ');
       final jsonString = encoder.convert(data);
 
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        return await prefs.setString(_webPrefsKey, jsonString);
+      }
+
+      final file = await _getFile();
       await file.writeAsString(jsonString, flush: true);
       return true;
     } catch (e, stack) {
@@ -122,6 +137,13 @@ class StrokeSerializer {
 
   static Future<SerializedNotebookData?> loadNotebook() async {
     try {
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        final content = prefs.getString(_webPrefsKey);
+        if (content == null || content.trim().isEmpty) return null;
+        return notebookFromJson(content);
+      }
+
       final file = await _getFile();
       if (!await file.exists()) {
         return null;
@@ -141,6 +163,10 @@ class StrokeSerializer {
 
   static Future<String?> readRawJson() async {
     try {
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        return prefs.getString(_webPrefsKey);
+      }
       final file = await _getFile();
       if (!await file.exists()) return null;
       return await file.readAsString();

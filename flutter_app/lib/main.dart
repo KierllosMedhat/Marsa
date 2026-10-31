@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
+import 'core/update/ota_update_dialog.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/receptionist/screens/receptionist_dashboard_screen.dart';
@@ -71,7 +72,9 @@ class MarsaApp extends ConsumerWidget {
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: child ?? const SizedBox.shrink(),
+          child: OtaUpdateWrapper(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       home: homeScreen,

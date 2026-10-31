@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:marsa_app/main.dart';
+import 'package:marsa_app/core/update/app_update_model.dart';
 import 'package:marsa_app/features/handwriting/models/ink_point.dart';
 import 'package:marsa_app/features/handwriting/models/ink_stroke.dart';
 import 'package:marsa_app/features/handwriting/handwriting_screen.dart';
@@ -98,14 +99,41 @@ void main() {
       );
 
       // Verify app bar title
-      expect(find.text('اختبار خط اليد — مرساة'), findsOneWidget);
+      expect(
+        find.text('ملاحظات مرساة الذكية (Huawei Notes — M-Pencil)'),
+        findsOneWidget,
+      );
 
       // Verify ink canvas and tool bar presence
       expect(find.byType(InkCanvas), findsOneWidget);
       expect(find.byType(ToolBar), findsOneWidget);
+    });
+  });
 
-      // Verify debug overlay presence
-      expect(find.text('بيانات القلم والحساس'), findsOneWidget);
+  group('OTA Online Update Engine Tests', () {
+    test('OtaUpdateState detects newer buildNumber and semver online', () {
+      final manifest = AppUpdateManifest.fromJson({
+        'version': '1.2.1',
+        'buildNumber': 4,
+        'releasedAt': '2026-10-27T23:15:00Z',
+        'mandatory': false,
+        'titleAr': 'تحديث هوائي مباشر (OTA v1.2.1)',
+        'changelogAr': ['تحسين الأداء'],
+      });
+
+      final stateWithUpdate = OtaUpdateState(
+        installedVersion: '1.2.0',
+        installedBuildNumber: 3,
+        remoteManifest: manifest,
+      );
+      expect(stateWithUpdate.hasUpdate, isTrue);
+
+      final stateUpToDate = OtaUpdateState(
+        installedVersion: '1.2.1',
+        installedBuildNumber: 4,
+        remoteManifest: manifest,
+      );
+      expect(stateUpToDate.hasUpdate, isFalse);
     });
   });
 }

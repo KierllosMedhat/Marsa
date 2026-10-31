@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/ink_point.dart';
@@ -275,6 +274,20 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
         if (call.method == 'onStylusDoubleTap') {
           triggerStylusDoubleTap();
         }
+      });
+    } catch (_) {}
+
+    // Also listen for F19 / F20 hardware key events (used by Huawei M-Pencil on HarmonyOS
+    // and forwarded into the Live Cloud OTA container by MainActivity.kt)
+    try {
+      HardwareKeyboard.instance.addHandler((KeyEvent event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.f19 ||
+                event.logicalKey == LogicalKeyboardKey.f20)) {
+          triggerStylusDoubleTap();
+          return true;
+        }
+        return false;
       });
     } catch (_) {}
   }

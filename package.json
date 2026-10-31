@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
-    "build:portal": "cd flutter_app && flutter build web --release --base-href /portal/"
+    "build:portal": "cd flutter_app && flutter build web --release --base-href /portal/",
+    "publish:ota": "node scripts/publish_ota.mjs",
+    "publish:ota:fast": "node scripts/publish_ota.mjs --web-only --push"
   },
   "dependencies": {
     "next": "14.2.15",

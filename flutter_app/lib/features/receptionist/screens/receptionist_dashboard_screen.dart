@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/update/ota_update_dialog.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../patients/screens/patient_create_screen.dart';
 import '../../patients/models/patient_model.dart';
@@ -527,6 +528,7 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
             ),
             const SizedBox(width: 8),
           ],
+          const OtaUpdateActionButton(),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'تسجيل الخروج',
