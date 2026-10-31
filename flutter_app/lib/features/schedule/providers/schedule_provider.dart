@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/storage/local_store.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/appointment_item.dart';
 
@@ -37,16 +38,61 @@ class ScheduleState {
 
 final scheduleProvider = StateNotifierProvider<ScheduleNotifier, ScheduleState>((ref) {
   final apiClient = ref.read(apiClientProvider);
+  final localStore = ref.read(localStoreProvider);
   ref.watch(authProvider.select((s) => '${s.isAuthenticated}_${s.user?.staffId}_${s.user?.role}'));
-  return ScheduleNotifier(apiClient);
+  return ScheduleNotifier(apiClient, localStore);
 });
 
 class ScheduleNotifier extends StateNotifier<ScheduleState> {
   final ApiClient _apiClient;
+  final LocalStore _localStore;
 
-  ScheduleNotifier(this._apiClient)
+  ScheduleNotifier(this._apiClient, this._localStore)
       : super(ScheduleState(selectedDate: DateTime.now())) {
     loadAppointments();
+  }
+
+  Future<void> _replayOfflineQueue() async {
+    try {
+      final queue = await _localStore.getSyncQueue();
+      if (queue.isEmpty) return;
+      bool allSynced = true;
+      for (final item in queue) {
+        if (item['type'] == 'draft_note' && item['session_id'] != null) {
+          final sessionId = item['session_id'].toString();
+          final payload = (item['payload'] as Map?)?.cast<String, dynamic>();
+          if (payload != null) {
+            final res = await _apiClient.put(
+              '/clinical/sessions/$sessionId',
+              body: {
+                'patient_id': payload['patient_id'],
+                'status': payload['status'] ?? 'draft',
+                'session_number': payload['session_number'],
+                'chief_complaint': payload['chief_complaint'],
+                'sleep': payload['sleep'],
+                'appetite': payload['appetite'],
+                'mood': payload['mood'],
+                'anxiety': payload['anxiety'],
+                'suicidal_self_harm_assessment':
+                    payload['suicidal_self_harm_assessment'],
+                'substance_use': payload['substance_use'],
+                'mental_status_examination': payload['mental_status_exam'],
+                'diagnosis': payload['diagnosis'],
+                'treatment_plan': payload['treatment_plan'],
+                'follow_up': payload['follow_up'],
+                'ink_stroke_json': payload['ink_stroke_json'],
+              },
+            );
+            if (!res.isSuccess && res.statusCode != 403) {
+              allSynced = false;
+            }
+          }
+        }
+      }
+      if (allSynced) {
+        await _localStore.clearSyncQueue();
+      }
+    } catch (_) {}
   }
 
   void changeDate(DateTime date) {
@@ -79,6 +125,7 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
         appointments: items,
         isOffline: false,
       );
+      _replayOfflineQueue();
     } else {
       // Fallback to offline schedule data for the clinic tablet
       final now = DateTime.now();

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:marsa_app/main.dart';
 import 'package:marsa_app/core/update/app_update_model.dart';
+import 'package:marsa_app/features/patients/models/patient_model.dart';
 import 'package:marsa_app/features/handwriting/models/ink_point.dart';
 import 'package:marsa_app/features/handwriting/models/ink_stroke.dart';
 import 'package:marsa_app/features/handwriting/handwriting_screen.dart';
@@ -134,6 +135,54 @@ void main() {
         remoteManifest: manifest,
       );
       expect(stateUpToDate.hasUpdate, isFalse);
+    });
+  });
+
+  group('PatientModel & Clinical Data Mapping Tests', () {
+    test('PatientModel.fromJson maps sessions, integer session_number, quick_notes, and uploaded_at', () {
+      final model = PatientModel.fromJson({
+        'patient_id': 'pat-101',
+        'mrn': 'MRN-00101',
+        'name_ar': 'أحمد محمود السعيد',
+        'psychiatric_history': 'تاريخ سابق لنوبات الهلع',
+        'notes': 'ملاحظة سريرية عامة',
+        'sessions': [
+          {
+            'session_id': 'sess-1',
+            'started_at': '2026-10-31T14:00:00Z',
+            'status': 'finalized',
+            'session_number': 2,
+            'chief_complaint': 'أرق وقلق',
+            'note_snippet': 'تم فحص الحالة العقلية',
+          },
+        ],
+        'quick_notes': [
+          {
+            'note_id': 'qn-1',
+            'note_text': 'متابعة الهاتف بعد أسبوع',
+            'last_modified': '2026-10-31T15:00:00Z',
+          },
+        ],
+        'files': [
+          {
+            'file_id': 'f-1',
+            'file_name': 'تحليل الغدة الدرقية.pdf',
+            'file_type': 'lab',
+            'file_location': '/uploads/ts1.pdf',
+            'uploaded_at': '2026-10-30T10:00:00Z',
+          },
+        ],
+      });
+
+      expect(model.patientId, 'pat-101');
+      expect(model.notes, 'ملاحظة سريرية عامة');
+      expect(model.sessionHistory.length, 1);
+      expect(model.sessionHistory.first.sessionNumber, '2');
+      expect(model.sessionHistory.first.noteSnippet, 'تم فحص الحالة العقلية');
+      expect(model.quickNotes.length, 1);
+      expect(model.quickNotes.first.noteText, 'متابعة الهاتف بعد أسبوع');
+      expect(model.files.length, 1);
+      expect(model.files.first.createdAt.year, 2026);
     });
   });
 }

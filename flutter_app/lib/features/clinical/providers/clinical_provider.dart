@@ -178,6 +178,7 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
     await _apiClient.put(
       '/clinical/sessions/${session.sessionId}',
       body: {
+        'patient_id': session.patientId,
         'session_number': session.sessionNumber,
         'chief_complaint': session.chiefComplaint,
         'sleep': session.sleep,
@@ -190,6 +191,7 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
         'diagnosis': session.diagnosis,
         'treatment_plan': session.treatmentPlan,
         'follow_up': session.followUp,
+        'ink_stroke_json': session.inkStrokeJson,
       },
     );
 
@@ -202,6 +204,7 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
         if (session.treatmentPlan.isNotEmpty) 'الخطة العلاجية: ${session.treatmentPlan}',
         if (session.generalNotesTyped.isNotEmpty) 'ملاحظات إضافية: ${session.generalNotesTyped}',
       ].join('\n\n'),
+      'content_ink_ref': session.inkStrokeJson,
       'is_draft': true,
     };
 
@@ -237,6 +240,7 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
     await _apiClient.put(
       '/clinical/sessions/${session.sessionId}',
       body: {
+        'patient_id': session.patientId,
         'status': 'finalized',
         'session_number': session.sessionNumber,
         'chief_complaint': session.chiefComplaint,
@@ -250,6 +254,7 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
         'diagnosis': session.diagnosis,
         'treatment_plan': session.treatmentPlan,
         'follow_up': session.followUp,
+        'ink_stroke_json': session.inkStrokeJson,
       },
     );
 
@@ -268,6 +273,7 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
         if (session.generalNotesTyped.isNotEmpty) 'ملاحظات الطبيب:\n${session.generalNotesTyped}',
         if (session.activeDiagnoses.isNotEmpty) 'التشخيصات المسجلة: ${session.activeDiagnoses.join('، ')}',
       ].join('\n\n---\n\n'),
+      'content_ink_ref': session.inkStrokeJson,
       'is_draft': false,
     };
 
@@ -275,6 +281,37 @@ class ClinicalSessionNotifier extends StateNotifier<ClinicalSessionState> {
       '/clinical/sessions/${session.sessionId}/notes',
       body: notePayload,
     );
+
+    // 4. Sync session prescriptions & diagnoses to the patient's permanent clinical dossier
+    if (session.patientId.isNotEmpty) {
+      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+      for (final rx in session.prescriptions) {
+        await _apiClient.post(
+          '/clinical/patients/${session.patientId}/medications',
+          body: {
+            'name_ar': rx.medicationName,
+            'dose': rx.dose,
+            'frequency': rx.frequency,
+            'duration': rx.duration,
+            'notes': rx.instructions,
+            'date': todayStr,
+          },
+        );
+      }
+      for (final diagStr in session.activeDiagnoses) {
+        final parts = diagStr.split('—').map((s) => s.trim()).toList();
+        final hasCode = parts.length > 1 && RegExp(r'^[A-Z]\d').hasMatch(parts[0]);
+        await _apiClient.post(
+          '/clinical/patients/${session.patientId}/diagnoses',
+          body: {
+            'icd10_code': hasCode ? parts[0] : null,
+            'description_ar': hasCode ? parts.sublist(1).join(' — ') : diagStr,
+            'date_diagnosed': todayStr,
+            'status': 'active',
+          },
+        );
+      }
+    }
 
     state = state.copyWith(
       isFinalizing: false,

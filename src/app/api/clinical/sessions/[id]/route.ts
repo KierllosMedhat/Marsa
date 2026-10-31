@@ -31,6 +31,15 @@ async function handleUpsertSession(
     const nowIso = new Date().toISOString();
 
     let session = db.sessions.find((s) => s.session_id === params.id);
+    if (session && session.status === 'finalized') {
+      return NextResponse.json(
+        {
+          detail:
+            'تم اعتماد وقفل هذه الجلسة السريرية ولا يمكن تعديلها مباشرة — يرجى إضافة ملحق (Addendum)',
+        },
+        { status: 403 }
+      );
+    }
     if (!session) {
       // Auto-create session if client generated UUID locally
       const defaultPatientId =

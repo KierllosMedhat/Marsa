@@ -18,6 +18,7 @@ const bookTypeSelect = document.getElementById('bookType');
 let calCurrentDate = new Date(); // Africa/Cairo reference
 let selectedCalDate = null;
 let selectedTimeSlot = null;
+let lastScreeningSummary = null;
 
 const ARABIC_MONTHS = [
   'يناير',
@@ -95,6 +96,16 @@ function completeBookingSuccess(mrn) {
 function initBookingModal() {
   btnOpenBooking.addEventListener('click', () => {
     bookingModal.classList.add('active');
+    const notesInput = document.getElementById('bookNotes');
+    if (
+      lastScreeningSummary &&
+      notesInput &&
+      !notesInput.value.includes('نتيجة الفحص المبدئي')
+    ) {
+      notesInput.value = notesInput.value
+        ? `${notesInput.value}\n${lastScreeningSummary}`
+        : lastScreeningSummary;
+    }
     renderCalendar();
   });
   btnCloseBooking.addEventListener('click', () =>
@@ -292,7 +303,7 @@ function renderCalendar() {
   renderTimeSlots();
 }
 
-function renderTimeSlots() {
+async function renderTimeSlots() {
   const container = document.getElementById('slotsGrid');
   const badge = document.getElementById('selectedSlotBadge');
   const badgeText = document.getElementById('selectedSlotText');
@@ -308,12 +319,33 @@ function renderTimeSlots() {
     return;
   }
 
-  if (!selectedTimeSlot && CLINIC_SLOTS.length > 0) {
-    selectedTimeSlot = CLINIC_SLOTS[0].time24;
-    const y = selectedCalDate.getFullYear();
-    const m = String(selectedCalDate.getMonth() + 1).padStart(2, '0');
-    const d = String(selectedCalDate.getDate()).padStart(2, '0');
-    hiddenInput.value = `${y}-${m}-${d}T${selectedTimeSlot}:00+02:00`;
+  const y = selectedCalDate.getFullYear();
+  const m = String(selectedCalDate.getMonth() + 1).padStart(2, '0');
+  const d = String(selectedCalDate.getDate()).padStart(2, '0');
+  const dateIso = `${y}-${m}-${d}`;
+
+  let bookedSlots = [];
+  try {
+    const res = await fetch(
+      `${API_BASE}/appointments/booked-slots?date=${dateIso}`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.booked_slots)) {
+        bookedSlots = data.booked_slots;
+      }
+    }
+  } catch (_) {}
+
+  const firstAvailable = CLINIC_SLOTS.find(
+    (s) => !bookedSlots.includes(s.time24)
+  );
+  if (
+    (!selectedTimeSlot || bookedSlots.includes(selectedTimeSlot)) &&
+    firstAvailable
+  ) {
+    selectedTimeSlot = firstAvailable.time24;
+    hiddenInput.value = `${dateIso}T${selectedTimeSlot}:00+02:00`;
     const dateOptions = {
       weekday: 'long',
       year: 'numeric',
@@ -321,43 +353,54 @@ function renderTimeSlots() {
       day: 'numeric',
     };
     const dateLabel = selectedCalDate.toLocaleDateString('ar-EG', dateOptions);
-    badgeText.textContent = `الموعد المختار: ${dateLabel} — الساعة ${CLINIC_SLOTS[0].label}`;
+    badgeText.textContent = `الموعد المختار: ${dateLabel} — الساعة ${firstAvailable.label}`;
     badge.style.display = 'flex';
+  } else if (!firstAvailable) {
+    selectedTimeSlot = null;
+    hiddenInput.value = '';
+    badge.style.display = 'none';
   }
 
   CLINIC_SLOTS.forEach((slot) => {
+    const isBooked = bookedSlots.includes(slot.time24);
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'slot-btn';
-    btn.textContent = slot.label;
+    btn.textContent = isBooked ? `${slot.label} (محجوز)` : slot.label;
 
-    if (selectedTimeSlot === slot.time24) {
-      btn.classList.add('active');
+    if (isBooked) {
+      btn.disabled = true;
+      btn.style.opacity = '0.45';
+      btn.style.cursor = 'not-allowed';
+    } else {
+      if (selectedTimeSlot === slot.time24) {
+        btn.classList.add('active');
+      }
+
+      btn.addEventListener('click', () => {
+        document
+          .querySelectorAll('.slot-btn')
+          .forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedTimeSlot = slot.time24;
+
+        const isoSlot = `${dateIso}T${slot.time24}:00+02:00`;
+        hiddenInput.value = isoSlot;
+
+        const dateOptions = {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        };
+        const dateLabel = selectedCalDate.toLocaleDateString(
+          'ar-EG',
+          dateOptions
+        );
+        badgeText.textContent = `الموعد المختار: ${dateLabel} — الساعة ${slot.label}`;
+        badge.style.display = 'flex';
+      });
     }
-
-    btn.addEventListener('click', () => {
-      document
-        .querySelectorAll('.slot-btn')
-        .forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      selectedTimeSlot = slot.time24;
-
-      const y = selectedCalDate.getFullYear();
-      const m = String(selectedCalDate.getMonth() + 1).padStart(2, '0');
-      const d = String(selectedCalDate.getDate()).padStart(2, '0');
-      const isoSlot = `${y}-${m}-${d}T${slot.time24}:00+02:00`;
-      hiddenInput.value = isoSlot;
-
-      const dateOptions = {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      };
-      const dateLabel = selectedCalDate.toLocaleDateString('ar-EG', dateOptions);
-      badgeText.textContent = `الموعد المختار: ${dateLabel} — الساعة ${slot.label}`;
-      badge.style.display = 'flex';
-    });
 
     container.appendChild(btn);
   });
@@ -391,5 +434,6 @@ function initScreeningTest() {
       descEl.textContent =
         'تشير الدرجة إلى معاناتك من مستويات قلق مرتفعة قد تؤثر على جودة حياتك ونومك. ننصحك بحجز جلسة تقييم متخصصة في العيادة للمساعدة.';
     }
+    lastScreeningSummary = `[نتيجة الفحص المبدئي للقلق: ${titleEl.textContent}]`;
   });
 }

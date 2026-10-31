@@ -111,7 +111,10 @@ class PatientFileItem {
       fileName: json['file_name'] ?? '',
       fileType: json['file_type'] ?? '',
       fileLocation: json['file_location'] ?? '',
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(
+            (json['uploaded_at'] ?? json['created_at'] ?? '').toString(),
+          ) ??
+          DateTime.now(),
     );
   }
 
@@ -161,6 +164,7 @@ class SessionSummaryItem {
   final String? anxiety;
   final String? treatmentPlan;
   final String? followUp;
+  final String? inkStrokeJson;
 
   SessionSummaryItem({
     required this.sessionId,
@@ -173,6 +177,7 @@ class SessionSummaryItem {
     this.anxiety,
     this.treatmentPlan,
     this.followUp,
+    this.inkStrokeJson,
   });
 
   factory SessionSummaryItem.fromJson(Map<String, dynamic> json) {
@@ -181,12 +186,13 @@ class SessionSummaryItem {
       startedAt: DateTime.tryParse(json['started_at'] ?? '') ?? DateTime.now(),
       status: json['status'] ?? 'finalized',
       noteSnippet: json['note_snippet'] ?? json['content_typed'],
-      sessionNumber: json['session_number'],
+      sessionNumber: json['session_number']?.toString(),
       chiefComplaint: json['chief_complaint'],
       mood: json['mood'],
       anxiety: json['anxiety'],
       treatmentPlan: json['treatment_plan'],
       followUp: json['follow_up'],
+      inkStrokeJson: json['ink_stroke_json'],
     );
   }
 }
@@ -305,7 +311,9 @@ class PatientModel {
       riskAssessment: clinical?['risk_assessment'] ?? json['risk_assessment'],
       suicideAttempts: clinical?['suicide_attempts'] ?? json['suicide_attempts'],
       admittedBefore: clinical?['admitted_before'] ?? json['admitted_before'],
-      notes: clinical?['notes'] ?? json['notes'],
+      notes: clinical?['notes'] is String
+          ? clinical!['notes'] as String?
+          : (json['notes'] is String ? json['notes'] as String? : null),
       allergies: List<String>.from(clinical?['allergies'] ?? json['allergies'] ?? []),
       diagnoses: (json['diagnoses'] as List?)
               ?.map((e) => DiagnosisItem.fromJson(e as Map<String, dynamic>))
@@ -315,7 +323,7 @@ class PatientModel {
               ?.map((e) => MedicationItem.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      sessionHistory: (json['session_history'] as List?)
+      sessionHistory: ((json['session_history'] ?? json['sessions']) as List?)
               ?.map((e) => SessionSummaryItem.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -323,11 +331,11 @@ class PatientModel {
               ?.map((e) => PatientFileItem.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      quickNotes: (json['notes'] is List)
-          ? (json['notes'] as List)
-              .map((e) => PatientNoteItem.fromJson(e as Map<String, dynamic>))
-              .toList()
-          : [],
+      quickNotes: ((json['quick_notes'] ??
+                  (json['notes'] is List ? json['notes'] : null)) as List?)
+              ?.map((e) => PatientNoteItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 }

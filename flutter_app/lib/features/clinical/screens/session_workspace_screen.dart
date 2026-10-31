@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../handwriting/providers/canvas_provider.dart';
 import '../../handwriting/widgets/ink_canvas.dart';
 import '../../handwriting/widgets/tool_bar.dart';
+import '../../patients/providers/patient_provider.dart';
 import '../../../core/utils/stroke_serializer.dart';
 import '../models/clinical_session.dart';
 import '../providers/clinical_provider.dart';
@@ -286,14 +288,221 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
             onPressed: () async {
               Navigator.pop(ctx);
               _syncTypedNotes();
+              final currentSession = ref.read(clinicalSessionProvider).currentSession;
               await ref.read(clinicalSessionProvider.notifier).finalizeSession();
+              if (currentSession != null && currentSession.patientId.isNotEmpty) {
+                ref.read(patientProvider.notifier).selectPatient(currentSession.patientId);
+              }
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم اعتماد الجلسة السريرية وقفلها بنجاح')),
+                  const SnackBar(content: Text('تم اعتماد الجلسة السريرية ومزامنة الأدوية والتشخيصات بنجاح')),
                 );
               }
             },
             child: const Text('تأكيد الاعتماد والقفل'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrescriptionPreviewModal(ClinicalSession session) {
+    _syncTypedNotes();
+    final dateStr = session.startedAt.toIso8601String().substring(0, 10);
+    final rxTextBuffer = StringBuffer()
+      ..writeln('عيادة مرساة للطب النفسي وعلاج الإدمان')
+      ..writeln('د. مارينا نبيه نمر — أخصائي الطب النفسي وعلاج الإدمان')
+      ..writeln('============================================')
+      ..writeln('اسم المريض: ${session.patientName}')
+      ..writeln('رقم الملف: ${session.patientMrn ?? "غير محدد"} | التاريخ: $dateStr')
+      ..writeln('--------------------------------------------');
+
+    if (session.activeDiagnoses.isNotEmpty) {
+      rxTextBuffer.writeln('التشخيص الإكلينيكي: ${session.activeDiagnoses.join(" ، ")}');
+    }
+    if (session.prescriptions.isNotEmpty) {
+      rxTextBuffer.writeln('\nالوصفة الطبية (Rx):');
+      for (var i = 0; i < session.prescriptions.length; i++) {
+        final p = session.prescriptions[i];
+        final instr = p.instructions ?? '';
+        rxTextBuffer.writeln(
+          '${i + 1}. ${p.medicationName} ${p.dose.isNotEmpty ? "(${p.dose})" : ""} — ${p.frequency} — لمدة: ${p.duration ?? ""}'
+          '${instr.isNotEmpty ? " [$instr]" : ""}',
+        );
+      }
+    }
+    if (_planController.text.trim().isNotEmpty) {
+      rxTextBuffer.writeln('\nالخطة العلاجية:\n${_planController.text.trim()}');
+    }
+    if (_followUpController.text.trim().isNotEmpty) {
+      rxTextBuffer.writeln('\nموعد وتعليمات المتابعة:\n${_followUpController.text.trim()}');
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.receipt_long, color: Color(0xFF1B4F72)),
+            SizedBox(width: 8),
+            Expanded(child: Text('الروشتة الطبية وملخص الجلسة (Rx)')),
+          ],
+        ),
+        content: SizedBox(
+          width: 580,
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAFBFD),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF1B4F72).withAlpha(60), width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'عيادة مرساة للطب النفسي',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1B4F72),
+                            ),
+                          ),
+                          Text(
+                            'د. مارينا نبيه نمر — أخصائي الطب النفسي وعلاج الإدمان',
+                            style: TextStyle(fontSize: 12, color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B4F72).withAlpha(22),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'التاريخ: $dateStr',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1B4F72),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24, thickness: 1.2),
+                  Text(
+                    'المريض: ${session.patientName}   (${session.patientMrn ?? "بدون رقم ملف"})',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  if (session.activeDiagnoses.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'التشخيص: ${session.activeDiagnoses.join(" ، ")}',
+                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  const Text(
+                    '℞ الأدوية الموصوفة:',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1B4F72),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (session.prescriptions.isEmpty)
+                    const Text(
+                      'لا توجد أدوية مضافة في هذه الجلسة بعد.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    )
+                  else
+                    ...session.prescriptions.map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.medication_outlined, size: 18, color: Color(0xFF1B4F72)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${p.medicationName} ${p.dose.isNotEmpty ? "(${p.dose})" : ""}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    Text(
+                                      'الجرعة: ${p.frequency} — المدة: ${p.duration ?? "غير محدد"}'
+                                      '${(p.instructions != null && p.instructions!.isNotEmpty) ? "\nتعليمات: ${p.instructions}" : ""}',
+                                      style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (_planController.text.trim().isNotEmpty ||
+                      _followUpController.text.trim().isNotEmpty) ...[
+                    const Divider(height: 24),
+                    if (_planController.text.trim().isNotEmpty)
+                      Text(
+                        'التوصيات العلاجية: ${_planController.text.trim()}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    if (_followUpController.text.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'المتابعة القادمة: ${_followUpController.text.trim()}',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إغلاق'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.copy, size: 16),
+            label: const Text('نسخ الروشتة والتقرير للطباعة / المشاركة'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B4F72),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: rxTextBuffer.toString()));
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('تم نسخ الروشتة والتقرير الطبي إلى الحافظة بنجاح')),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -397,6 +606,12 @@ class _SessionWorkspaceScreenState extends ConsumerState<SessionWorkspaceScreen>
                 ),
               ),
             ),
+
+          IconButton(
+            icon: const Icon(Icons.receipt_long_outlined),
+            tooltip: 'معاينة الروشتة والتقرير (Rx)',
+            onPressed: () => _showPrescriptionPreviewModal(session),
+          ),
 
           if (!session.isFinalized) ...[
             if (isMobile) ...[

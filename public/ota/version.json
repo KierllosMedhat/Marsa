@@ -1,16 +1,16 @@
 {
-  "version": "1.2.2",
-  "buildNumber": 5,
-  "releasedAt": "2026-10-31T15:18:07.732Z",
+  "version": "1.2.3",
+  "buildNumber": 6,
+  "releasedAt": "2026-10-31T16:44:29.055Z",
   "mandatory": false,
   "minSupportedBuild": 1,
   "channel": "stable",
-  "titleAr": "تحديث هوائي مباشر (OTA v1.2.2)",
+  "titleAr": "تحديث هوائي مباشر (OTA v1.2.3)",
   "changelogAr": [
+    "تحسينات شاملة للأمان وصلاحيات الأدوار، مزامنة الجلسات والروشتة الطبية (Rx)، الفلترة بالتاريخ، ومنع تضارب المواعيد",
     "تحديث أيقونة التطبيق الرسمية لعيادة مرساة وإبطال كاش الأيقونة على التابلت",
     "اعتماد شعار عيادة مرساة الرسمي كأيقونة للتطبيق على جميع المنصات",
-    "تفعيل نظام التحديث الهوائي التلقائي (OTA) دون الحاجة لإعادة تثبيت ملف APK يدوياً عند كل تعديل.",
-    "إضافة وضع المزامنة السحابية الفورية (Live Cloud OTA) لتشغيل أحدث التعديلات والواجهات لحظياً فور نشرها."
+    "تفعيل نظام التحديث الهوائي التلقائي (OTA) دون الحاجة لإعادة تثبيت ملف APK يدوياً عند كل تعديل."
   ],
   "apkDownloadUrl": "https://raw.githubusercontent.com/KierllosMedhat/Marsa/master/Marsa-Clinic-Android.apk",
   "apkMirrorUrl": "https://marsa-clinic-xi.vercel.app/ota/Marsa-Clinic-Android.apk",

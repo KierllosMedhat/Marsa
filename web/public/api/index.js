@@ -454,10 +454,30 @@ function buildDoctorPatientResponse(patient) {
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
   const sessions = db.sessions
     .filter((s) => s.patient_id === patient.patient_id)
-    .sort((a, b) => b.started_at.localeCompare(a.started_at));
+    .sort((a, b) => b.started_at.localeCompare(a.started_at))
+    .map((s) => {
+      const latestNote = (db.session_notes || [])
+        .filter((n) => n.session_id === s.session_id)
+        .sort((a, b) => b.edited_at.localeCompare(a.edited_at))[0];
+      return {
+        ...s,
+        session_number:
+          s.session_number != null ? String(s.session_number) : null,
+        note_snippet: latestNote
+          ? decryptField(latestNote.content_typed)
+          : s.treatment_plan || s.chief_complaint || null,
+        ink_stroke_json: latestNote?.content_ink_ref
+          ? decryptField(latestNote.content_ink_ref)
+          : s.ink_stroke_json || null,
+      };
+    });
   const files = db.patient_files
     .filter((f) => f.patient_id === patient.patient_id)
-    .sort((a, b) => b.uploaded_at.localeCompare(a.uploaded_at));
+    .sort((a, b) => b.uploaded_at.localeCompare(a.uploaded_at))
+    .map((f) => ({
+      ...f,
+      created_at: f.uploaded_at || f.created_at,
+    }));
   const notes = db.patient_notes
     .filter((n) => n.patient_id === patient.patient_id)
     .sort((a, b) => b.last_modified.localeCompare(a.last_modified));
@@ -500,6 +520,7 @@ function buildDoctorPatientResponse(patient) {
     diagnoses,
     medications,
     sessions,
+    session_history: sessions,
     files,
     quick_notes: notes,
     created_by: patient.created_by,
@@ -600,8 +621,8 @@ module.exports = async function handler(req, res) {
       'no-store, no-cache, must-revalidate, proxy-revalidate'
     );
     const defaultManifest = {
-      version: '1.2.2',
-      buildNumber: 5,
+      version: '1.2.3',
+      buildNumber: 6,
       releasedAt: '2026-10-27T23:15:00.000Z',
       mandatory: false,
       minSupportedBuild: 1,
@@ -917,21 +938,52 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 200, reqItem);
   }
 
-  // 9. GET / POST /appointments
+  // 9. GET /appointments/booked-slots?date=YYYY-MM-DD
+  if (pathname === '/appointments/booked-slots' && method === 'GET') {
+    const dateParam = parsedUrl.searchParams.get('date');
+    const active = db.appointments.filter(
+      (a) => a.status !== 'cancelled' && a.status !== 'no_show'
+    );
+    const bookedSlots = [];
+    for (const a of active) {
+      const dt = new Date(a.slot_start);
+      if (isNaN(dt.getTime())) continue;
+      // Convert to Africa/Cairo (UTC+2) date & HH:mm
+      const cairoMs = dt.getTime() + 2 * 60 * 60 * 1000;
+      const cairoIso = new Date(cairoMs).toISOString();
+      const cairoDate = cairoIso.slice(0, 10);
+      const rawDate = String(a.slot_start).slice(0, 10);
+      if (!dateParam || cairoDate === dateParam || rawDate === dateParam) {
+        bookedSlots.push(cairoIso.slice(11, 16));
+      }
+    }
+    return sendJson(res, 200, {
+      date: dateParam,
+      booked_slots: [...new Set(bookedSlots)],
+    });
+  }
+
+  // 9b. GET / POST /appointments
   if (pathname === '/appointments') {
     if (method === 'GET') {
       const dateParam = parsedUrl.searchParams.get('date');
-      const list = db.appointments.filter((a) => a.status !== 'cancelled');
-      list.sort((a, b) => {
-        const createdDiff = b.created_at.localeCompare(a.created_at);
-        if (createdDiff !== 0) return createdDiff;
-        if (dateParam) {
-          const aMatches = a.slot_start.slice(0, 10) === dateParam ? 0 : 1;
-          const bMatches = b.slot_start.slice(0, 10) === dateParam ? 0 : 1;
-          if (aMatches !== bMatches) return aMatches - bMatches;
-        }
-        return 0;
-      });
+      const includeAll = parsedUrl.searchParams.get('include_all') === 'true';
+      let list = db.appointments.filter((a) => a.status !== 'cancelled');
+      if (dateParam && !includeAll) {
+        list = list.filter((a) => {
+          const rawDate = String(a.slot_start).slice(0, 10);
+          if (rawDate === dateParam) return true;
+          const dt = new Date(a.slot_start);
+          if (!isNaN(dt.getTime())) {
+            const cairoDate = new Date(dt.getTime() + 2 * 60 * 60 * 1000)
+              .toISOString()
+              .slice(0, 10);
+            return cairoDate === dateParam;
+          }
+          return false;
+        });
+      }
+      list.sort((a, b) => a.slot_start.localeCompare(b.slot_start));
       const enriched = list.map((a) => {
         const pat = db.patients.find((p) => p.patient_id === a.patient_id);
         const bookReq = db.booking_requests.find(
@@ -997,6 +1049,11 @@ module.exports = async function handler(req, res) {
   // 11. GET / POST /patients
   if (pathname === '/patients') {
     const staff = getStaffFromRequest(req);
+    if (!staff) {
+      return sendJson(res, 401, {
+        detail: 'غير مصرح بالدخول — يرجى تسجيل الدخول أولاً',
+      });
+    }
     if (method === 'GET') {
       const q = (parsedUrl.searchParams.get('q') || '').trim().toLowerCase();
       let activePatients = db.patients.filter((p) => !p.deleted_at);
@@ -1009,7 +1066,7 @@ module.exports = async function handler(req, res) {
             (p.phone && p.phone.includes(q))
         );
       }
-      if (staff && staff.role === 'receptionist') {
+      if (staff.role === 'receptionist') {
         return sendJson(
           res,
           200,
@@ -1029,6 +1086,20 @@ module.exports = async function handler(req, res) {
       if (!nameAr) {
         return sendJson(res, 422, { detail: 'name_ar is required' });
       }
+      const cleanPhone = body.phone ? String(body.phone).trim() : null;
+      const duplicateWarnings = [];
+      for (const existing of db.patients) {
+        if (existing.deleted_at) continue;
+        if (
+          existing.name_ar === nameAr ||
+          (cleanPhone && existing.phone === cleanPhone)
+        ) {
+          duplicateWarnings.push(
+            `تشابه مع سجل المريض: ${existing.name_ar} (${existing.mrn})`
+          );
+        }
+      }
+
       const nextNum = db.patients.length + 1;
       const mrn = `MRN-${String(nextNum).padStart(5, '0')}`;
       const nowIso = new Date().toISOString();
@@ -1040,7 +1111,7 @@ module.exports = async function handler(req, res) {
         dob: body.dob || null,
         sex: body.sex || null,
         national_id: body.national_id ? encryptField(body.national_id) : null,
-        phone: body.phone || null,
+        phone: cleanPhone,
         email: body.email || null,
         address: body.address || null,
         occupation: body.occupation || null,
@@ -1049,23 +1120,52 @@ module.exports = async function handler(req, res) {
         first_session_date: body.first_session_date || nowIso.slice(0, 10),
         last_session_date: body.last_session_date || null,
         emergency_contact: body.emergency_contact || null,
-        created_by: staff ? staff.staff_id : 'system',
+        created_by: staff.staff_id,
         created_at: nowIso,
         updated_at: nowIso,
         deleted_at: null,
       };
       db.patients.unshift(newPatient);
       saveDb(db);
+      const baseResp =
+        staff.role === 'receptionist'
+          ? buildReceptionistPatientSummary(newPatient)
+          : buildDoctorPatientResponse(newPatient);
       return sendJson(res, 201, {
-        ...buildDoctorPatientResponse(newPatient),
-        duplicate_warnings: [],
+        ...baseResp,
+        duplicate_warnings: duplicateWarnings,
       });
     }
   }
 
-  // 12. GET / PUT / DELETE /patients/:id
+  // 11b. GET /patients/:id/summary (Doctor & Receptionist allowed)
+  const patSummaryMatch = pathname.match(/^\/patients\/([^/]+)\/summary$/);
+  if (patSummaryMatch && method === 'GET') {
+    const staff = getStaffFromRequest(req);
+    if (!staff) {
+      return sendJson(res, 401, { detail: 'غير مصرح بالدخول' });
+    }
+    const patient = db.patients.find(
+      (p) => p.patient_id === patSummaryMatch[1] && !p.deleted_at
+    );
+    if (!patient) {
+      return sendJson(res, 404, { detail: 'Patient not found' });
+    }
+    return sendJson(res, 200, buildReceptionistPatientSummary(patient));
+  }
+
+  // 12. GET / PUT / DELETE /patients/:id (Doctor / Admin only)
   const patDetailMatch = pathname.match(/^\/patients\/([^/]+)$/);
   if (patDetailMatch) {
+    const staff = getStaffFromRequest(req);
+    if (!staff) {
+      return sendJson(res, 401, { detail: 'غير مصرح بالدخول' });
+    }
+    if (staff.role !== 'doctor' && staff.role !== 'admin') {
+      return sendJson(res, 403, {
+        detail: 'غير مصرح لموظف الاستقبال بالوصول إلى السجل الطبي الكامل للمريض',
+      });
+    }
     const patientId = patDetailMatch[1];
     const patient = db.patients.find(
       (p) => p.patient_id === patientId && !p.deleted_at
@@ -1076,7 +1176,7 @@ module.exports = async function handler(req, res) {
     if (method === 'GET') {
       return sendJson(res, 200, buildDoctorPatientResponse(patient));
     }
-    if (method === 'PUT') {
+    if (method === 'PUT' || method === 'PATCH') {
       const body = await parseBody(req);
       if (body.name_ar !== undefined) patient.name_ar = body.name_ar;
       if (body.name_en !== undefined) patient.name_en = body.name_en;
@@ -1107,17 +1207,26 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // 13. Clinical endpoints (/clinical/patients/:id/...)
+  // 13. Clinical endpoints (/clinical/patients/:id/...) — Doctor only
   const clinicalSubMatch = pathname.match(
     /^\/clinical\/patients\/([^/]+)\/(clinical|diagnoses|medications|files|notes)(?:\/([^/]+))?$/
   );
   if (clinicalSubMatch) {
+    const staff = getStaffFromRequest(req);
+    if (!staff) {
+      return sendJson(res, 401, { detail: 'غير مصرح بالدخول' });
+    }
+    if (staff.role !== 'doctor' && staff.role !== 'admin') {
+      return sendJson(res, 403, {
+        detail: 'السجلات والبيانات السريرية مقصورة على الطبيب المعالج فقط',
+      });
+    }
     const patientId = clinicalSubMatch[1];
     const resource = clinicalSubMatch[2];
     const subId = clinicalSubMatch[3];
     const nowIso = new Date().toISOString();
 
-    if (resource === 'clinical' && method === 'POST') {
+    if (resource === 'clinical' && (method === 'POST' || method === 'PUT')) {
       const body = await parseBody(req);
       let rec = db.patient_clinical.find((c) => c.patient_id === patientId);
       if (!rec) {
@@ -1136,7 +1245,7 @@ module.exports = async function handler(req, res) {
           notes: null,
           allergies: [],
           updated_at: nowIso,
-          updated_by: 'doctor',
+          updated_by: staff.staff_id,
         };
         db.patient_clinical.push(rec);
       }
@@ -1161,7 +1270,11 @@ module.exports = async function handler(req, res) {
       if (Array.isArray(body.allergies)) rec.allergies = body.allergies;
       rec.updated_at = nowIso;
       saveDb(db);
-      return sendJson(res, 200, { status: 'updated' });
+      const patObj = db.patients.find((p) => p.patient_id === patientId);
+      return sendJson(res, 200, {
+        status: 'updated',
+        ...(patObj ? buildDoctorPatientResponse(patObj) : {}),
+      });
     }
 
     if (resource === 'diagnoses' && method === 'POST') {
@@ -1249,9 +1362,27 @@ module.exports = async function handler(req, res) {
     /^\/clinical\/sessions(?:\/([^/]+))?(?:\/(notes))?$/
   );
   if (sessionMatch) {
+    const staff = getStaffFromRequest(req);
+    if (!staff) {
+      return sendJson(res, 401, { detail: 'يرجى تسجيل الدخول أولاً' });
+    }
+    if (staff.role !== 'doctor' && staff.role !== 'admin') {
+      return sendJson(res, 403, {
+        detail: 'غير مصرح لك بالوصول إلى جلسات الطبيب السريرية',
+      });
+    }
     const sessionId = sessionMatch[1] || crypto.randomUUID();
     const isNotes = sessionMatch[2] === 'notes';
     const nowIso = new Date().toISOString();
+
+    if (method === 'GET' && !isNotes) {
+      const existing = db.sessions.find((s) => s.session_id === sessionId);
+      if (!existing) {
+        return sendJson(res, 404, { detail: 'الجلسة غير موجودة' });
+      }
+      return sendJson(res, 200, existing);
+    }
+
     const body = await parseBody(req);
 
     if (isNotes && method === 'POST') {
@@ -1262,12 +1393,14 @@ module.exports = async function handler(req, res) {
         content_typed: body.content_typed
           ? encryptField(body.content_typed)
           : null,
-        content_ink_ref: null,
+        content_ink_ref: body.content_ink_ref
+          ? encryptField(body.content_ink_ref)
+          : null,
         version: 1,
         is_draft: Boolean(body.is_draft),
         amended_from: null,
         edited_at: nowIso,
-        edited_by: 'doctor',
+        edited_by: staff.staff_id || 'doctor',
       };
       db.session_notes.push(note);
       saveDb(db);
@@ -1281,7 +1414,7 @@ module.exports = async function handler(req, res) {
         patient_id: body.patient_id || '',
         appointment_id: body.appointment_id || null,
         started_at: nowIso,
-        ended_at: null,
+        ended_at: body.status === 'finalized' ? nowIso : null,
         status: body.status || 'draft',
         session_number: Number(body.session_number) || 1,
         chief_complaint: body.chief_complaint || null,
@@ -1296,20 +1429,32 @@ module.exports = async function handler(req, res) {
         diagnosis: body.diagnosis || null,
         treatment_plan: body.treatment_plan || null,
         follow_up: body.follow_up || null,
-        created_by: 'doctor',
-        finalized_by: body.status === 'finalized' ? 'doctor' : null,
+        ink_stroke_json: body.ink_stroke_json || null,
+        created_by: staff.staff_id || 'doctor',
+        finalized_by:
+          body.status === 'finalized' ? staff.staff_id || 'doctor' : null,
         finalized_at: body.status === 'finalized' ? nowIso : null,
         created_at: nowIso,
       };
       db.sessions.unshift(session);
+      saveDb(db);
+      return sendJson(res, method === 'POST' ? 201 : 200, session);
     } else {
+      if (session.status === 'finalized') {
+        return sendJson(res, 403, {
+          detail:
+            'تم اعتماد وقفل هذه الجلسة السريرية ولا يمكن تعديلها مباشرة — يرجى إضافة ملحق (Addendum)',
+        });
+      }
       Object.assign(session, body);
       if (body.status === 'finalized') {
+        session.ended_at = nowIso;
+        session.finalized_by = staff.staff_id || 'doctor';
         session.finalized_at = nowIso;
       }
+      saveDb(db);
+      return sendJson(res, 200, session);
     }
-    saveDb(db);
-    return sendJson(res, 200, session);
   }
 
   return sendJson(res, 404, { detail: `Endpoint not found: ${pathname}` });

@@ -28,22 +28,24 @@ export async function GET(req: NextRequest) {
   const dateFilter = req.nextUrl.searchParams.get('date')?.trim();
   const db = getDb();
 
-  const allAppointments = [...db.appointments];
+  let appointments = [...db.appointments];
 
-  // Sort: newest website/clinic bookings first, then date match
-  allAppointments.sort((a, b) => {
-    const createdDiff = b.created_at.localeCompare(a.created_at);
-    if (createdDiff !== 0) return createdDiff;
-    if (dateFilter) {
-      const aMatches = a.slot_start.slice(0, 10) === dateFilter;
-      const bMatches = b.slot_start.slice(0, 10) === dateFilter;
-      if (aMatches && !bMatches) return -1;
-      if (!aMatches && bMatches) return 1;
-    }
-    return 0;
-  });
+  if (dateFilter) {
+    appointments = appointments.filter((a) => {
+      if (!a.slot_start) return false;
+      const utcDate = a.slot_start.slice(0, 10);
+      const cairoDate = new Date(
+        new Date(a.slot_start).getTime() + 2 * 60 * 60 * 1000
+      )
+        .toISOString()
+        .slice(0, 10);
+      return utcDate === dateFilter || cairoDate === dateFilter;
+    });
+  }
 
-  return NextResponse.json(allAppointments.map(enrichAppointment));
+  appointments.sort((a, b) => a.slot_start.localeCompare(b.slot_start));
+
+  return NextResponse.json(appointments.map(enrichAppointment));
 }
 
 export async function POST(req: NextRequest) {
