@@ -183,8 +183,8 @@ async function main() {
         path.join('public', 'ota-bundle'),
       ]) {
         const dest = path.join(ROOT_DIR, targetRel);
-        fs.rmSync(dest, { recursive: true, force: true });
-        fs.cpSync(webBuildOut, dest, { recursive: true });
+        fs.mkdirSync(dest, { recursive: true });
+        fs.cpSync(webBuildOut, dest, { recursive: true, force: true });
       }
       console.log(`   Copied Live Cloud OTA bundle to web/public/ota-bundle/`);
     }
