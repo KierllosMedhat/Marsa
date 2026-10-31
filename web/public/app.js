@@ -134,6 +134,13 @@ function initBookingModal() {
       return;
     }
 
+    if (new Date(preferredSlot).getTime() <= Date.now()) {
+      alert(
+        'لا يمكن حجز موعد في وقت قد مضى — يرجى اختيار موعد مستقبلي من التقويم.'
+      );
+      return;
+    }
+
     if (!name || !phone) {
       alert('يرجى ملء الاسم ورقم الهاتف.');
       return;
@@ -243,10 +250,22 @@ function renderCalendar() {
     daysGrid.appendChild(empty);
   }
 
+  const now = new Date();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  if (!selectedCalDate) {
+  const hasRemainingSlotsOnDate = (dateObj) => {
+    const yStr = dateObj.getFullYear();
+    const mStr = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dStr = String(dateObj.getDate()).padStart(2, '0');
+    return CLINIC_SLOTS.some(
+      (s) =>
+        new Date(`${yStr}-${mStr}-${dStr}T${s.time24}:00+02:00`).getTime() >
+        now.getTime()
+    );
+  };
+
+  if (!selectedCalDate || !hasRemainingSlotsOnDate(selectedCalDate)) {
     for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
       const candidate = new Date(
         today.getFullYear(),
@@ -254,7 +273,7 @@ function renderCalendar() {
         today.getDate() + dayOffset
       );
       const isCandidateFriday = (candidate.getDay() + 1) % 7 === 6;
-      if (!isCandidateFriday) {
+      if (!isCandidateFriday && hasRemainingSlotsOnDate(candidate)) {
         selectedCalDate = candidate;
         break;
       }
@@ -265,7 +284,7 @@ function renderCalendar() {
     const cellDate = new Date(year, month, d);
     const dayOfWeek = (cellDate.getDay() + 1) % 7;
     const isFriday = dayOfWeek === 6;
-    const isPast = cellDate < today;
+    const isPast = cellDate < today || !hasRemainingSlotsOnDate(cellDate);
 
     const cell = document.createElement('div');
     cell.className = 'cal-day-cell';
@@ -337,11 +356,18 @@ async function renderTimeSlots() {
     }
   } catch (_) {}
 
+  const isSlotPast = (time24) => {
+    const slotDt = new Date(`${dateIso}T${time24}:00+02:00`);
+    return slotDt.getTime() <= Date.now();
+  };
+
   const firstAvailable = CLINIC_SLOTS.find(
-    (s) => !bookedSlots.includes(s.time24)
+    (s) => !bookedSlots.includes(s.time24) && !isSlotPast(s.time24)
   );
   if (
-    (!selectedTimeSlot || bookedSlots.includes(selectedTimeSlot)) &&
+    (!selectedTimeSlot ||
+      bookedSlots.includes(selectedTimeSlot) ||
+      isSlotPast(selectedTimeSlot)) &&
     firstAvailable
   ) {
     selectedTimeSlot = firstAvailable.time24;
@@ -363,12 +389,18 @@ async function renderTimeSlots() {
 
   CLINIC_SLOTS.forEach((slot) => {
     const isBooked = bookedSlots.includes(slot.time24);
+    const isPastTime = isSlotPast(slot.time24);
+    const isUnavailable = isBooked || isPastTime;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'slot-btn';
-    btn.textContent = isBooked ? `${slot.label} (محجوز)` : slot.label;
+    btn.textContent = isBooked
+      ? `${slot.label} (محجوز)`
+      : isPastTime
+      ? `${slot.label} (انتهى)`
+      : slot.label;
 
-    if (isBooked) {
+    if (isUnavailable) {
       btn.disabled = true;
       btn.style.opacity = '0.45';
       btn.style.cursor = 'not-allowed';

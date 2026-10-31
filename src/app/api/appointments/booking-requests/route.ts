@@ -37,6 +37,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (body.preferred_slot) {
+      const requestedTime = new Date(body.preferred_slot);
+      if (
+        !isNaN(requestedTime.getTime()) &&
+        requestedTime.getTime() < Date.now() - 60 * 1000
+      ) {
+        return NextResponse.json(
+          {
+            detail:
+              'لا يمكن حجز موعد في وقت قد مضى — يرجى اختيار تاريخ ووقت مستقبلي.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const db = getDb();
     const typeObj =
       db.appointment_types.find((t) => t.type_id === body.type_id) ||
@@ -82,6 +98,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Create the booking request record for receptionist triage visibility
+    // Note: The appointment is only added to confirmed appointments after receptionist confirmation (/match).
     const requestId = crypto.randomUUID();
     const bookingReq: BookingRequestRecord = {
       request_id: requestId,
@@ -97,41 +114,11 @@ export async function POST(req: NextRequest) {
     };
     db.booking_requests.unshift(bookingReq);
 
-    // 3. Automatically create a scheduled appointment so it immediately appears in the Portal Schedule
-    let slotStartIso = nowIso;
-    if (body.preferred_slot) {
-      const parsed = new Date(body.preferred_slot);
-      if (!isNaN(parsed.getTime())) {
-        slotStartIso = parsed.toISOString();
-      }
-    }
-    const durationMs = (typeObj.duration_minutes || 45) * 60 * 1000;
-    const slotEndIso = new Date(
-      new Date(slotStartIso).getTime() + durationMs
-    ).toISOString();
-
-    const newAppt: AppointmentRecord = {
-      appointment_id: crypto.randomUUID(),
-      patient_id: patient.patient_id,
-      booking_request_id: requestId,
-      type_id: typeObj.type_id,
-      slot_start: slotStartIso,
-      slot_end: slotEndIso,
-      status: 'confirmed',
-      notes: body.notes
-        ? `${body.notes} (حجز من الموقع الإلكتروني)`
-        : 'حجز من الموقع الإلكتروني',
-      created_at: nowIso,
-      updated_at: nowIso,
-    };
-    db.appointments.push(newAppt);
-
     saveDb(db);
 
     return NextResponse.json(
       {
         ...bookingReq,
-        appointment_id: newAppt.appointment_id,
         patient_id: patient.patient_id,
         patient_mrn: patient.mrn,
       },

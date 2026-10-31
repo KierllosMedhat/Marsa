@@ -28,7 +28,18 @@ export async function GET(req: NextRequest) {
   const dateFilter = req.nextUrl.searchParams.get('date')?.trim();
   const db = getDb();
 
-  let appointments = [...db.appointments];
+  let appointments = db.appointments.filter((a) => {
+    if (a.status === 'cancelled') return false;
+    if (a.booking_request_id) {
+      const linkedReq = db.booking_requests.find(
+        (r) => r.request_id === a.booking_request_id
+      );
+      if (linkedReq && linkedReq.status !== 'matched') {
+        return false;
+      }
+    }
+    return true;
+  });
 
   if (dateFilter) {
     appointments = appointments.filter((a) => {
@@ -54,6 +65,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    if (body.slot_start) {
+      const requestedTime = new Date(body.slot_start);
+      if (
+        !isNaN(requestedTime.getTime()) &&
+        requestedTime.getTime() < Date.now() - 60 * 1000
+      ) {
+        return NextResponse.json(
+          {
+            detail:
+              'لا يمكن حجز موعد في وقت قد مضى — يرجى اختيار تاريخ ووقت مستقبلي.',
+          },
+          { status: 400 }
+        );
+      }
+    }
     const db = getDb();
 
     const typeObj =

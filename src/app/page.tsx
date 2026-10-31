@@ -110,16 +110,32 @@ export default function HomePage() {
     setCalMonth(todayClean.getMonth());
     setCalYear(todayClean.getFullYear());
 
+    const hasRemainingSlots = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return CLINIC_SLOTS.some(
+        (s) => new Date(`${y}-${m}-${day}T${s.time24}:00+02:00`).getTime() > Date.now()
+      );
+    };
+
     for (let i = 0; i < 30; i++) {
       const cand = new Date(
         todayClean.getFullYear(),
         todayClean.getMonth(),
         todayClean.getDate() + i
       );
-      if ((cand.getDay() + 1) % 7 !== 6) {
+      if ((cand.getDay() + 1) % 7 !== 6 && hasRemainingSlots(cand)) {
         setSelectedDate(cand);
         setCalMonth(cand.getMonth());
         setCalYear(cand.getFullYear());
+        const y = cand.getFullYear();
+        const m = String(cand.getMonth() + 1).padStart(2, '0');
+        const day = String(cand.getDate()).padStart(2, '0');
+        const firstValid = CLINIC_SLOTS.find(
+          (s) => new Date(`${y}-${m}-${day}T${s.time24}:00+02:00`).getTime() > Date.now()
+        );
+        if (firstValid) setSelectedSlot(firstValid.time24);
         break;
       }
     }
@@ -183,6 +199,13 @@ export default function HomePage() {
 
     if (!bookName.trim() || !bookPhone.trim()) {
       setBookingErrorMsg('يرجى إدخال الاسم بالكامل ورقم الهاتف المحمول.');
+      return;
+    }
+
+    if (new Date(getPreferredSlotIso()).getTime() <= Date.now()) {
+      setBookingErrorMsg(
+        'لا يمكن حجز موعد في وقت قد مضى — يرجى اختيار تاريخ ووقت مستقبلي.'
+      );
       return;
     }
 
@@ -450,18 +473,34 @@ export default function HomePage() {
               اختر توقيت الجلسة (بتوقيت القاهرة) *
             </label>
             <div className="slots-grid">
-              {CLINIC_SLOTS.map((slot) => (
-                <button
-                  key={slot.time24}
-                  type="button"
-                  className={`slot-btn ${
-                    selectedSlot === slot.time24 ? 'active' : ''
-                  }`}
-                  onClick={() => setSelectedSlot(slot.time24)}
-                >
-                  {slot.label}
-                </button>
-              ))}
+              {CLINIC_SLOTS.map((slot) => {
+                const y = selectedDate.getFullYear();
+                const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                const d = String(selectedDate.getDate()).padStart(2, '0');
+                const isPastSlot =
+                  new Date(`${y}-${m}-${d}T${slot.time24}:00+02:00`).getTime() <=
+                  Date.now();
+                return (
+                  <button
+                    key={slot.time24}
+                    type="button"
+                    disabled={isPastSlot}
+                    style={
+                      isPastSlot
+                        ? { opacity: 0.45, cursor: 'not-allowed' }
+                        : undefined
+                    }
+                    className={`slot-btn ${
+                      !isPastSlot && selectedSlot === slot.time24 ? 'active' : ''
+                    }`}
+                    onClick={() => {
+                      if (!isPastSlot) setSelectedSlot(slot.time24);
+                    }}
+                  >
+                    {isPastSlot ? `${slot.label} (انتهى)` : slot.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

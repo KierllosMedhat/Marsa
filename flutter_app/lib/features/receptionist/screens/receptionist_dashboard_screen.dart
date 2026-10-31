@@ -158,8 +158,13 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
       },
     ];
     String selectedTypeId = types.first['type_id'] as String;
-    DateTime selectedDate = DateTime.now();
-    TimeOfDay selectedTime = const TimeOfDay(hour: 16, minute: 0);
+    final now = DateTime.now();
+    DateTime selectedDate = now.hour >= 20
+        ? DateTime(now.year, now.month, now.day + 1)
+        : DateTime(now.year, now.month, now.day);
+    TimeOfDay selectedTime = now.hour >= 20
+        ? const TimeOfDay(hour: 16, minute: 0)
+        : TimeOfDay(hour: (now.hour + 1).clamp(14, 20), minute: 0);
     bool fetchedRemoteTypes = false;
     bool isSubmitting = false;
 
@@ -256,13 +261,18 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                     title: Text(DateFormat('yyyy/MM/dd').format(selectedDate)),
                     trailing: const Text('تغيير التاريخ'),
                     onTap: () async {
+                      final todayStart = DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                        DateTime.now().day,
+                      );
                       final d = await showDatePicker(
                         context: context,
-                        initialDate: selectedDate,
-                        firstDate: DateTime.now().subtract(
-                          const Duration(days: 1),
-                        ),
-                        lastDate: DateTime.now().add(const Duration(days: 90)),
+                        initialDate: selectedDate.isBefore(todayStart)
+                            ? todayStart
+                            : selectedDate,
+                        firstDate: todayStart,
+                        lastDate: todayStart.add(const Duration(days: 90)),
                       );
                       if (d != null) setDialogState(() => selectedDate = d);
                     },
@@ -313,7 +323,6 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                           );
                           return;
                         }
-                        setDialogState(() => isSubmitting = true);
                         final slotStart = DateTime(
                           selectedDate.year,
                           selectedDate.month,
@@ -321,6 +330,18 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                           selectedTime.hour,
                           selectedTime.minute,
                         );
+                        if (slotStart.isBefore(DateTime.now())) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              backgroundColor: Colors.red,
+                              content: Text(
+                                'لا يمكن حجز موعد في وقت قد مضى — يرجى اختيار تاريخ ووقت مستقبلي.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        setDialogState(() => isSubmitting = true);
                         final slotEnd =
                             slotStart.add(const Duration(minutes: 45));
 
@@ -389,13 +410,92 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
     );
   }
 
-  void _showMatchDialog(Map<String, dynamic> req) {
+  Future<void> _confirmWebsiteBooking(
+    Map<String, dynamic> req, {
+    String? overridePatientId,
+  }) async {
     final messenger = ScaffoldMessenger.of(context);
-    String? selectedPatientId;
+    final client = ref.read(apiClientProvider);
+    String? targetPatientId =
+        overridePatientId ?? req['matching_patient_id']?.toString();
+    if (targetPatientId == null && _patients.isNotEmpty) {
+      final match = _patients
+          .where((p) =>
+              p.phone == req['phone'] ||
+              p.nameAr.contains((req['name'] ?? '').toString()))
+          .firstOrNull;
+      targetPatientId = match?.patientId ?? _patients.first.patientId;
+    }
+
+    final res = await client.post(
+      '/appointments/booking-requests/${req['request_id']}/match',
+      body: {
+        if (targetPatientId != null) 'patient_id': targetPatientId,
+      },
+    );
+
+    if (res.isSuccess) {
+      setState(() {
+        _bookingRequests = _bookingRequests
+            .where((b) => b['request_id'] != req['request_id'])
+            .toList();
+      });
+      _loadBookingRequests();
+      _loadPatients(_patientSearchController.text);
+
+      final preferredSlotRaw = req['preferred_slot']?.toString();
+      final parsedDate = preferredSlotRaw != null
+          ? DateTime.tryParse(preferredSlotRaw)?.toLocal()
+          : null;
+      if (parsedDate != null) {
+        ref.read(scheduleProvider.notifier).changeDate(
+              DateTime(parsedDate.year, parsedDate.month, parsedDate.day),
+            );
+      } else {
+        ref.read(scheduleProvider.notifier).loadAppointments();
+      }
+
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text(
+              'تم تأكيد الحجز ونقله إلى قسم المواعيد المؤكدة بنجاح.',
+            ),
+            action: SnackBarAction(
+              label: 'عرض المواعيد المؤكدة',
+              textColor: Colors.amberAccent,
+              onPressed: () {
+                if (mounted) {
+                  setState(() => _currentTabIndex = 0);
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(res.errorMessage ?? 'تعذر تأكيد طلب الحجز.'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showMatchDialog(Map<String, dynamic> req) {
+    String? selectedPatientId = req['matching_patient_id']?.toString();
     if (_patients.isNotEmpty) {
-      // Look for auto-match by name or phone
-      final match = _patients.where((p) => p.phone == req['phone'] || p.nameAr.contains(req['name'])).firstOrNull;
-      if (match != null) selectedPatientId = match.patientId;
+      final exists = _patients.any((p) => p.patientId == selectedPatientId);
+      if (!exists) {
+        final match = _patients
+            .where((p) =>
+                p.phone == req['phone'] ||
+                p.nameAr.contains((req['name'] ?? '').toString()))
+            .firstOrNull;
+        selectedPatientId = match?.patientId ?? _patients.first.patientId;
+      }
     }
 
     showDialog(
@@ -406,7 +506,7 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
             children: [
               Icon(Icons.how_to_reg, color: Color(0xFF45632D)),
               SizedBox(width: 8),
-              Text('مطابقة طلب الحجز من الموقع'),
+              Flexible(child: Text('تأكيد ومطابقة حجز الموقع الإلكتروني')),
             ],
           ),
           content: SingleChildScrollView(
@@ -414,20 +514,21 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('اسم صاحب الطلب: ${req['name']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('اسم صاحب الحجز: ${req['name']}', style: const TextStyle(fontWeight: FontWeight.bold)),
                 Text('رقم الهاتف: ${req['phone']}'),
                 if (req['notes'] != null) Text('ملاحظة: ${req['notes']}'),
                 const Divider(height: 20),
-                const Text('اختر الملف الطبي لمطابقته:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                const Text('اختر الملف الطبي لتأكيد الموعد ونقله للمواعيد المؤكدة:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   decoration: const InputDecoration(border: OutlineInputBorder()),
                   value: selectedPatientId,
                   hint: const Text('اختر مريض من السجل'),
                   items: _patients.map((p) {
                     return DropdownMenuItem(
                       value: p.patientId,
-                      child: Text('${p.nameAr} (${p.mrn})'),
+                      child: Text('${p.nameAr} (${p.mrn})', overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                   onChanged: (val) => setDialogState(() => selectedPatientId = val),
@@ -448,22 +549,13 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
               onPressed: selectedPatientId == null
                   ? null
                   : () async {
-                      final client = ref.read(apiClientProvider);
-                      final res = await client.post(
-                        '/appointments/booking-requests/${req['request_id']}/match',
-                        body: {'patient_id': selectedPatientId},
+                      Navigator.pop(ctx);
+                      await _confirmWebsiteBooking(
+                        req,
+                        overridePatientId: selectedPatientId,
                       );
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (res.isSuccess) {
-                        _loadBookingRequests();
-                        if (mounted) {
-                          messenger.showSnackBar(
-                            const SnackBar(content: Text('تمت مطابقة الطلب واعتماده بنجاح.')),
-                          );
-                        }
-                      }
                     },
-              child: const Text('اعتماد المطابقة'),
+              child: const Text('تأكيد الحجز ونقله للمواعيد المؤكدة'),
             ),
           ],
         ),
@@ -589,7 +681,7 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
           const NavigationDestination(
             icon: Icon(Icons.calendar_today_outlined),
             selectedIcon: Icon(Icons.calendar_today),
-            label: 'المواعيد والحضور',
+            label: 'المواعيد المؤكدة',
           ),
           const NavigationDestination(
             icon: Icon(Icons.people_outline),
@@ -598,14 +690,14 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
           ),
           NavigationDestination(
             icon: Badge(
-              label: Text('${_bookingRequests.where((b) => b['status'] == 'pending_match').length}'),
+              label: Text('${_bookingRequests.where((b) => (b['status'] ?? 'pending_match') == 'pending_match').length}'),
               child: const Icon(Icons.inbox_outlined),
             ),
             selectedIcon: Badge(
-              label: Text('${_bookingRequests.where((b) => b['status'] == 'pending_match').length}'),
+              label: Text('${_bookingRequests.where((b) => (b['status'] ?? 'pending_match') == 'pending_match').length}'),
               child: const Icon(Icons.inbox),
             ),
-            label: 'طلبات الموقع',
+            label: 'حجوزات الموقع',
           ),
         ],
       ),
@@ -923,6 +1015,10 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
   }
 
   Widget _buildBookingsTab(BuildContext context) {
+    final pendingRequests = _bookingRequests
+        .where((b) => (b['status'] ?? 'pending_match') == 'pending_match')
+        .toList();
+
     return Column(
       children: [
         Container(
@@ -933,7 +1029,7 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
             children: [
               const Expanded(
                 child: Text(
-                  'طلبات الحجز الواردة من موقع العيادة الإلكتروني',
+                  'حجوزات الموقع الإلكتروني (بانتظار التأكيد للنقل إلى المواعيد المؤكدة)',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
               ),
@@ -949,21 +1045,20 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
         Expanded(
           child: _isLoadingBookings
               ? const Center(child: CircularProgressIndicator())
-              : _bookingRequests.isEmpty
+              : pendingRequests.isEmpty
                   ? Center(
                       child: Text(
-                        'لا توجد طلبات حجز جديدة من الموقع',
+                        'لا توجد حجوزات معلقة من الموقع حالياً — جميع الحجوزات المؤكدة تظهر في تبويب (المواعيد المؤكدة)',
                         style: TextStyle(color: Colors.grey[600]),
+                        textAlign: TextAlign.center,
                       ),
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.all(12),
-                      itemCount: _bookingRequests.length,
+                      itemCount: pendingRequests.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (ctx, idx) {
-                        final req = _bookingRequests[idx] as Map<String, dynamic>;
-                        final status = req['status'] ?? 'pending_match';
-                        final isPending = status == 'pending_match';
+                        final req = pendingRequests[idx] as Map<String, dynamic>;
 
                         return Card(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -983,13 +1078,11 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                     ),
                                     Chip(
-                                      label: Text(
-                                        isPending ? 'بانتظار المطابقة' : (status == 'matched' ? 'تمت المطابقة' : 'مرفوض'),
-                                        style: const TextStyle(fontSize: 11, color: Colors.white),
+                                      label: const Text(
+                                        'حجز موقع — بانتظار التأكيد',
+                                        style: TextStyle(fontSize: 11, color: Colors.white),
                                       ),
-                                      backgroundColor: isPending
-                                          ? Colors.amber.shade800
-                                          : (status == 'matched' ? Colors.teal : Colors.red),
+                                      backgroundColor: Colors.amber.shade800,
                                       visualDensity: VisualDensity.compact,
                                     ),
                                   ],
@@ -998,36 +1091,39 @@ class _ReceptionistDashboardScreenState extends ConsumerState<ReceptionistDashbo
                                 Text('الهاتف: ${req['phone'] ?? ""}', style: TextStyle(color: Colors.grey[800])),
                                 if (req['preferred_slot'] != null)
                                   Text(
-                                    'الموعد المطلوب: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.parse(req['preferred_slot']))}',
+                                    'الموعد المطلوب: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.parse(req['preferred_slot']).toLocal())}',
                                     style: const TextStyle(color: Color(0xFF45632D), fontWeight: FontWeight.bold),
                                   ),
                                 if (req['notes'] != null && (req['notes'] as String).isNotEmpty)
                                   Text('ملاحظة: ${req['notes']}', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
 
-                                if (isPending) ...[
-                                  const Divider(height: 18),
-                                  Wrap(
-                                    alignment: WrapAlignment.end,
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      OutlinedButton.icon(
-                                        icon: const Icon(Icons.close, size: 16, color: Colors.red),
-                                        label: const Text('رفض الطلب', style: TextStyle(color: Colors.red)),
-                                        onPressed: () => _rejectBookingRequest(req['request_id']),
+                                const Divider(height: 18),
+                                Wrap(
+                                  alignment: WrapAlignment.end,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                                      label: const Text('رفض الطلب', style: TextStyle(color: Colors.red)),
+                                      onPressed: () => _rejectBookingRequest(req['request_id']),
+                                    ),
+                                    OutlinedButton.icon(
+                                      icon: const Icon(Icons.person_search, size: 16, color: Color(0xFF45632D)),
+                                      label: const Text('تحديد ملف المريض', style: TextStyle(color: Color(0xFF45632D))),
+                                      onPressed: () => _showMatchDialog(req),
+                                    ),
+                                    ElevatedButton.icon(
+                                      icon: const Icon(Icons.check_circle_outline, size: 16),
+                                      label: const Text('تأكيد الحجز'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF45632D),
+                                        foregroundColor: Colors.white,
                                       ),
-                                      ElevatedButton.icon(
-                                        icon: const Icon(Icons.check, size: 16),
-                                        label: const Text('مطابقة مع ملف مريض'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFF45632D),
-                                          foregroundColor: Colors.white,
-                                        ),
-                                        onPressed: () => _showMatchDialog(req),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                      onPressed: () => _confirmWebsiteBooking(req),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),

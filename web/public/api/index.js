@@ -621,8 +621,8 @@ module.exports = async function handler(req, res) {
       'no-store, no-cache, must-revalidate, proxy-revalidate'
     );
     const defaultManifest = {
-      version: '1.2.3',
-      buildNumber: 6,
+      version: '1.2.4',
+      buildNumber: 7,
       releasedAt: '2026-10-27T23:15:00.000Z',
       mandatory: false,
       minSupportedBuild: 1,
@@ -817,6 +817,19 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      if (body.preferred_slot) {
+        const requestedTime = new Date(body.preferred_slot);
+        if (
+          !isNaN(requestedTime.getTime()) &&
+          requestedTime.getTime() < Date.now() - 60 * 1000
+        ) {
+          return sendJson(res, 400, {
+            detail:
+              'لا يمكن حجز موعد في وقت قد مضى — يرجى اختيار تاريخ ووقت مستقبلي.',
+          });
+        }
+      }
+
       const typeObj =
         db.appointment_types.find((t) => t.type_id === body.type_id) ||
         db.appointment_types[0];
@@ -870,39 +883,10 @@ module.exports = async function handler(req, res) {
         created_at: nowIso,
       };
       db.booking_requests.unshift(bookingReq);
-
-      let slotStartIso = nowIso;
-      if (body.preferred_slot) {
-        const parsed = new Date(body.preferred_slot);
-        if (!isNaN(parsed.getTime())) {
-          slotStartIso = parsed.toISOString();
-        }
-      }
-      const durationMs = (typeObj.duration_minutes || 45) * 60 * 1000;
-      const slotEndIso = new Date(
-        new Date(slotStartIso).getTime() + durationMs
-      ).toISOString();
-
-      const newAppt = {
-        appointment_id: crypto.randomUUID(),
-        patient_id: patient.patient_id,
-        booking_request_id: requestId,
-        type_id: typeObj.type_id,
-        slot_start: slotStartIso,
-        slot_end: slotEndIso,
-        status: 'confirmed',
-        notes: body.notes
-          ? `${body.notes} (حجز من الموقع الإلكتروني)`
-          : 'حجز من الموقع الإلكتروني',
-        created_at: nowIso,
-        updated_at: nowIso,
-      };
-      db.appointments.unshift(newAppt);
       saveDb(db);
 
       return sendJson(res, 201, {
         ...bookingReq,
-        appointment_id: newAppt.appointment_id,
         patient_id: patient.patient_id,
         patient_mrn: patient.mrn,
       });
@@ -922,20 +906,67 @@ module.exports = async function handler(req, res) {
     }
     if (action === 'reject') {
       reqItem.status = 'rejected';
+      db.appointments = db.appointments.filter(
+        (a) => a.booking_request_id !== reqId
+      );
       saveDb(db);
       return sendJson(res, 200, reqItem);
     }
     const body = await parseBody(req);
+    const nowIso = new Date().toISOString();
     reqItem.status = 'matched';
-    if (body.patient_id) reqItem.matching_patient_id = body.patient_id;
-    const existingAppt = db.appointments.find(
+    const targetPatientId =
+      body.patient_id || reqItem.matching_patient_id || null;
+    if (targetPatientId) reqItem.matching_patient_id = targetPatientId;
+
+    let existingAppt = db.appointments.find(
       (a) => a.booking_request_id === reqId
     );
-    if (existingAppt && body.patient_id) {
-      existingAppt.patient_id = body.patient_id;
+    if (existingAppt) {
+      if (targetPatientId) existingAppt.patient_id = targetPatientId;
+      existingAppt.status = 'confirmed';
+      existingAppt.updated_at = nowIso;
+    } else {
+      const typeObj =
+        db.appointment_types.find((t) => t.type_id === reqItem.type_id) ||
+        db.appointment_types[0] || {
+          type_id: reqItem.type_id,
+          duration_minutes: 45,
+        };
+      let slotStartIso = nowIso;
+      if (reqItem.preferred_slot) {
+        const parsed = new Date(reqItem.preferred_slot);
+        if (!isNaN(parsed.getTime())) {
+          slotStartIso = parsed.toISOString();
+        }
+      }
+      const durationMs = (typeObj.duration_minutes || 45) * 60 * 1000;
+      const slotEndIso = new Date(
+        new Date(slotStartIso).getTime() + durationMs
+      ).toISOString();
+
+      existingAppt = {
+        appointment_id: crypto.randomUUID(),
+        patient_id: targetPatientId,
+        booking_request_id: reqId,
+        type_id: typeObj.type_id,
+        slot_start: slotStartIso,
+        slot_end: slotEndIso,
+        status: 'confirmed',
+        notes: reqItem.notes
+          ? `${reqItem.notes} (حجز مؤكد من الموقع الإلكتروني)`
+          : 'حجز مؤكد من الموقع الإلكتروني',
+        created_at: nowIso,
+        updated_at: nowIso,
+      };
+      db.appointments.unshift(existingAppt);
     }
     saveDb(db);
-    return sendJson(res, 200, reqItem);
+    return sendJson(res, 200, {
+      ...reqItem,
+      appointment_id: existingAppt.appointment_id,
+      appointment: existingAppt,
+    });
   }
 
   // 9. GET /appointments/booked-slots?date=YYYY-MM-DD
@@ -944,15 +975,21 @@ module.exports = async function handler(req, res) {
     const active = db.appointments.filter(
       (a) => a.status !== 'cancelled' && a.status !== 'no_show'
     );
+    const pendingReqs = db.booking_requests.filter(
+      (r) => r.status === 'pending_match'
+    );
     const bookedSlots = [];
-    for (const a of active) {
-      const dt = new Date(a.slot_start);
+    for (const rawSlot of [
+      ...active.map((a) => a.slot_start),
+      ...pendingReqs.map((r) => r.preferred_slot),
+    ]) {
+      const dt = new Date(rawSlot);
       if (isNaN(dt.getTime())) continue;
       // Convert to Africa/Cairo (UTC+2) date & HH:mm
       const cairoMs = dt.getTime() + 2 * 60 * 60 * 1000;
       const cairoIso = new Date(cairoMs).toISOString();
       const cairoDate = cairoIso.slice(0, 10);
-      const rawDate = String(a.slot_start).slice(0, 10);
+      const rawDate = String(rawSlot).slice(0, 10);
       if (!dateParam || cairoDate === dateParam || rawDate === dateParam) {
         bookedSlots.push(cairoIso.slice(11, 16));
       }
@@ -968,7 +1005,18 @@ module.exports = async function handler(req, res) {
     if (method === 'GET') {
       const dateParam = parsedUrl.searchParams.get('date');
       const includeAll = parsedUrl.searchParams.get('include_all') === 'true';
-      let list = db.appointments.filter((a) => a.status !== 'cancelled');
+      let list = db.appointments.filter((a) => {
+        if (a.status === 'cancelled') return false;
+        if (a.booking_request_id) {
+          const linkedReq = db.booking_requests.find(
+            (r) => r.request_id === a.booking_request_id
+          );
+          if (linkedReq && linkedReq.status !== 'matched') {
+            return false;
+          }
+        }
+        return true;
+      });
       if (dateParam && !includeAll) {
         list = list.filter((a) => {
           const rawDate = String(a.slot_start).slice(0, 10);
@@ -1007,6 +1055,18 @@ module.exports = async function handler(req, res) {
 
     if (method === 'POST') {
       const body = await parseBody(req);
+      if (body.slot_start) {
+        const requestedTime = new Date(body.slot_start);
+        if (
+          !isNaN(requestedTime.getTime()) &&
+          requestedTime.getTime() < Date.now() - 60 * 1000
+        ) {
+          return sendJson(res, 400, {
+            detail:
+              'لا يمكن حجز موعد في وقت قد مضى — يرجى اختيار تاريخ ووقت مستقبلي.',
+          });
+        }
+      }
       const nowIso = new Date().toISOString();
       const typeId =
         body.type_id ||

@@ -9,8 +9,8 @@ export async function GET() {
     status: 'ok',
     db: db.staff.length > 0,
     redis: true,
-    appVersion: '1.2.3',
-    buildNumber: 6,
+    appVersion: '1.2.4',
+    buildNumber: 7,
     timestamp: new Date().toISOString(),
   });
 }
